@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block title %}Exam — AURA-EDU{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-900 text-white">
+    <!-- Exam Header -->
+    <nav class="bg-gray-800 border-b border-gray-700 px-4 py-3">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-lg font-bold text-primary-400">AURA-EDU Exam</h1>
+                <span id="exam-title" class="text-sm text-gray-400"></span>
+            </div>
+            <div class="flex items-center space-x-6">
+                <div class="text-center">
+                    <div class="text-xs text-gray-400">Time Left</div>
+                    <div id="timer" class="text-lg font-mono font-bold text-yellow-400">--:--</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xs text-gray-400">Risk Score</div>
+                    <div id="risk-score" class="text-lg font-bold text-green-400">0</div>
+                </div>
+                <button onclick="submitExam()"
+                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                    Submit Exam
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-5xl mx-auto py-6 px-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Questions Panel -->
+        <div class="lg:col-span-3 space-y-6" id="questions-panel">
+            <!-- Face Verification Screen -->
+            <div id="face-verify-screen" class="bg-gray-800 rounded-xl p-8 text-center">
+                <h2 class="text-xl font-semibold mb-4">Face Verification Required</h2>
+                <p class="text-gray-400 mb-6">Please allow camera access and look directly at the camera.</p>
+                <video id="verify-video" autoplay playsinline class="mx-auto rounded-lg mb-4 w-80 h-60 bg-black"></video>
+                <button onclick="verifyFace()" id="verify-btn"
+                        class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition">
+                    Verify Face & Start Exam
+                </button>
+                <p id="verify-status" class="text-sm mt-3 text-gray-400"></p>
+            </div>
+
+            <!-- Questions (hidden until verified) -->
+            <div id="questions-container" class="hidden space-y-6"></div>
+        </div>
+
+        <!-- Sidebar: Camera & Question Nav -->
+        <div class="space-y-4">
+            <!-- Proctoring Camera -->
+            <div class="bg-gray-800 rounded-xl p-4">
+                <div class="text-xs text-gray-400 mb-2 flex items-center space-x-1">
+                    <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    <span>Camera Active</span>
+                </div>
+                <video id="proctor-video" autoplay playsinline muted class="w-full rounded-lg bg-black aspect-video"></video>
+                <canvas id="proctor-canvas" class="hidden"></canvas>
+            </div>
+
+            <!-- Question Navigator -->
+            <div class="bg-gray-800 rounded-xl p-4">
+                <div class="text-xs text-gray-400 mb-3">Questions</div>
+                <div id="question-nav" class="grid grid-cols-5 gap-2"></div>
+            </div>
+
+            <!-- Violation Alert -->
+            <div id="violation-alert" class="hidden bg-red-900/50 border border-red-700 rounded-xl p-4">
+                <div class="text-sm font-medium text-red-400">Warning</div>
+                <p id="violation-msg" class="text-xs text-red-300 mt-1"></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const user = AUTH.getUser();
+if (!user || user.role !== 'student') { window.location.href = '/login'; }
+
+const examId = {{ exam_id }};
+let submissionId = null;
+let questions = [];
+let timerInterval = null;
+let proctorInterval = null;
+let stream = null;
+
+// ─── Initialize Camera ───
+async function initCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        document.getElementById('verify-video').srcObject = stream;
+        document.getElementById('proctor-video').srcObject = stream;
+    } catch (err) {
+        document.getElementById('verify-status').textContent = 'Camera access denied. Proctoring requires camera.';
+    }
+}
+
+// ─── Face Verification ───
+async function verifyFace() {
+    const btn = document.getElementById('verify-btn');
+    const status = document.getElementById('verify-status');
+    btn.disabled = true;
+    status.textContent = 'Verifying...';
+
+    // Start exam first to get submission ID
+    const startResp = await AUTH.fetch(`/api/student/exams/${examId}/start`, { method: 'POST' });
+    if (!startResp.ok) {
+        status.textContent = 'Failed to start exam.';
+        btn.disabled = false;
+        return;
+    }
+    const startData = await startResp.json();
+    submissionId = startData.submission_id;
+    questions = startData.questions;
+
+    // Capture frame for face verification
+    const frame = captureFrame();
+    const verifyResp = await AUTH.fetch(`/api/exam/${submissionId}/face-verify`, {
+        method: 'POST',
+        body: JSON.stringify({ image: frame }),
+    });
+    const verifyData = await verifyResp.json();
+
+    if (verifyData.verified) {
+        document.getElementById('face-verify-screen').classList.add('hidden');
+        document.getElementById('questions-container').classList.remove('hidden');
+        document.getElementById('exam-title').textContent = startData.exam.title;
+        renderQuestions();
+        startTimer(startData.exam.duration_minutes * 60);
+        startProctoring();
+        setupTabDetection();
+    } else {
+        status.innerHTML = '<span class="text-red-400">Face verification failed — your face does not match your registered profile. Please try again or update your face registration in your Profile.</span>';
+        btn.disabled = false;
+    }
+}
+
+// ─── Capture Video Frame ───
+function captureFrame() {
+    const video = document.getElementById('proctor-video');
+    const canvas = document.getElementById('proctor-canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.7);
+}
+
+// ─── Render Questions ───
+function renderQuestions() {
+    const container = document.getElementById('questions-container');
+    const nav = document.getElementById('question-nav');
+
+    container.innerHTML = questions.map((q, i) => `
+        <div id="q-${q.id}" class="bg-gray-800 rounded-xl p-6">
+            <div class="flex justify-between items-start mb-4">
+                <span class="bg-primary-900 text-primary-300 text-xs font-medium px-2 py-1 rounded">Q${i + 1}</span>
+                <span class="text-xs text-gray-500">${q.marks} marks • ${q.difficulty}</span>
+            </div>
+            <p class="text-gray-200 mb-4">${q.question_text}</p>
+            ${q.question_type === 'mcq' ? renderMCQ(q) : renderTextAnswer(q)}
+        </div>
+    `).join('');
+
+    nav.innerHTML = questions.map((q, i) => `
+        <button onclick="document.getElementById('q-${q.id}').scrollIntoView({behavior:'smooth'})"
+                class="w-10 h-10 rounded-lg bg-gray-700 hover:bg-gray-600 text-xs font-medium transition answer-nav"
+                data-qid="${q.id}">${i + 1}</button>
+    `).join('');
+}
+
+function renderMCQ(q) {
+    return q.options.map((opt, i) => `
+        <label class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700/50 cursor-pointer transition mb-2">
+            <input type="radio" name="q_${q.id}" value="${i}" onchange="saveAnswer(${q.id}, 'mcq', ${i})"
+                   class="w-4 h-4 text-primary-500">
+            <span class="text-gray-300">${opt}</span>
+        </label>
+    `).join('');
+}
+
+function renderTextAnswer(q) {
+    return `<textarea onchange="saveAnswer(${q.id}, '${q.question_type}', this.value)"
+                      class="w-full bg-gray-700 text-gray-200 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-primary-500 outline-none"
+                      rows="${q.question_type === 'essay' ? 8 : 3}"
+                      placeholder="Type your answer..."></textarea>`;
+}
+
+// ─── Save Answer ───
+async function saveAnswer(questionId, type, value) {
+    const body = { question_id: questionId };
+    if (type === 'mcq') body.selected_option = value;
+    else body.answer_text = value;
+
+    await AUTH.fetch(`/api/student/exams/${submissionId}/answer`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
+
+    // Mark question as answered in nav
+    const navBtn = document.querySelector(`[data-qid="${questionId}"]`);
+    if (navBtn) {
+        navBtn.classList.remove('bg-gray-700');
+        navBtn.classList.add('bg-primary-600');
+    }
+}
+
+// ─── Timer ───
+function startTimer(seconds) {
+    let remaining = seconds;
+    const timerEl = document.getElementById('timer');
+    timerInterval = setInterval(() => {
+        remaining--;
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+        if (remaining <= 300) timerEl.classList.replace('text-yellow-400', 'text-red-400');
+        if (remaining <= 0) { clearInterval(timerInterval); submitExam(); }
+    }, 1000);
+}
+
+// ─── Proctoring ───
+function startProctoring() {
+    proctorInterval = setInterval(async () => {
+        const frame = captureFrame();
+        const resp = await AUTH.fetch(`/api/exam/${submissionId}/proctor-frame`, {
+            method: 'POST',
+            body: JSON.stringify({ image: frame }),
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            document.getElementById('risk-score').textContent = data.risk_score;
+
+            // Update risk score color
+            const scoreEl = document.getElementById('risk-score');
+            if (data.risk_score > 80) scoreEl.className = 'text-lg font-bold text-red-400';
+            else if (data.risk_score > 40) scoreEl.className = 'text-lg font-bold text-yellow-400';
+            else scoreEl.className = 'text-lg font-bold text-green-400';
+
+            // Show violation alert
+            if (data.violations && data.violations.length > 0) {
+                const alertDiv = document.getElementById('violation-alert');
+                const msgEl = document.getElementById('violation-msg');
+                alertDiv.classList.remove('hidden');
+                msgEl.textContent = `Detected: ${data.violations.join(', ')}`;
+                setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+            }
+
+            if (data.is_flagged) {
+                document.getElementById('risk-score').classList.add('animate-pulse');
+            }
+        }
+    }, 10000); // Every 10 seconds
+}
+
+// ─── Tab Switch Detection ───
+function setupTabDetection() {
+    document.addEventListener('visibilitychange', async () => {
+        if (document.hidden && submissionId) {
+            await AUTH.fetch(`/api/exam/${submissionId}/tab-switch`, { method: 'POST' });
+        }
+    });
+}
+
+// ─── Submit Exam ───
+async function submitExam() {
+    if (!confirm('Are you sure you want to submit? You cannot change answers after submission.')) return;
+
+    clearInterval(timerInterval);
+    clearInterval(proctorInterval);
+
+    const resp = await AUTH.fetch(`/api/student/exams/${submissionId}/submit`, { method: 'POST' });
+    if (resp.ok) {
+        const data = await resp.json();
+        alert(`Exam submitted! ${data.submission.total_score !== null ? 'Score: ' + data.submission.total_score : 'Grading in progress.'}`);
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        window.location.href = '/student/dashboard';
+    }
+}
+
+initCamera();
+</script>
+{% endblock %}

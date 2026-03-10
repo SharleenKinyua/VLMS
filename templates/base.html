@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AURA-EDU{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
+                        accent: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {% block body %}{% endblock %}
+
+    <script>
+        // Global JWT token management
+        const AUTH = {
+            getToken() { return localStorage.getItem('access_token'); },
+            setToken(token) { localStorage.setItem('access_token', token); },
+            getUser() {
+                const u = localStorage.getItem('user');
+                return u ? JSON.parse(u) : null;
+            },
+            setUser(user) { localStorage.setItem('user', JSON.stringify(user)); },
+            clear() { localStorage.removeItem('access_token'); localStorage.removeItem('user'); },
+            async fetch(url, options = {}) {
+                const headers = { 'Content-Type': 'application/json', ...options.headers };
+                const token = this.getToken();
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+                const resp = await fetch(url, { ...options, headers });
+                if (resp.status === 401) { this.clear(); window.location.href = '/login'; }
+                return resp;
+            }
+        };
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

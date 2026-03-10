@@ -1,0 +1,2070 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard — AURA-EDU{% endblock %}
+
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+    /* ── Inter font ── */
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; letter-spacing: -0.011em; }
+    /* ── Dark glassmorphism nav ── */
+    .glass-nav {
+        background: rgba(10, 10, 10, 0.85);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .glass-nav.scrolled {
+        background: rgba(10, 10, 10, 0.95);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ── Nav link animations ── */
+    .nav-pill {
+        position: relative;
+        transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    .nav-pill::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 50%;
+        width: 0;
+        height: 2px;
+        background: #fff;
+        border-radius: 2px;
+        transition: all 0.3s cubic-bezier(.4,0,.2,1);
+        transform: translateX(-50%);
+    }
+    .nav-pill:hover::after,
+    .nav-pill.active::after {
+        width: 60%;
+    }
+    .nav-pill.active {
+        color: #ffffff !important;
+    }
+    .nav-pill:hover {
+        transform: translateY(-1px);
+        color: #ffffff !important;
+    }
+
+    /* ── Dropdown slide-in ── */
+    .dropdown-panel {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.97);
+        pointer-events: none;
+        transition: all 0.25s cubic-bezier(.4,0,.2,1);
+    }
+    .dropdown-panel.open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+
+    /* ── Mobile slide-down ── */
+    .mobile-panel {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s cubic-bezier(.4,0,.2,1), opacity 0.25s ease;
+        opacity: 0;
+    }
+    .mobile-panel.open {
+        max-height: 400px;
+        opacity: 1;
+    }
+
+    /* ── Avatar glow ring ── */
+    .avatar-ring {
+        position: relative;
+    }
+    .avatar-ring::before {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 9999px;
+        background: linear-gradient(135deg, #fff, #999, #fff);
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .avatar-ring:hover::before {
+        opacity: 1;
+        animation: pulse-ring 2s ease-in-out infinite;
+    }
+    @keyframes pulse-ring {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 0.2; transform: scale(1.1); }
+    }
+
+    /* ── Logo shimmer ── */
+    .logo-text {
+        background: linear-gradient(90deg, #ffffff 0%, #999999 40%, #ffffff 60%, #999999 100%);
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: logo-shimmer 6s ease-in-out infinite;
+    }
+    @keyframes logo-shimmer {
+        0% { background-position: 100% 50%; }
+        100% { background-position: -100% 50%; }
+    }
+
+    /* ── Dark card styles ── */
+    .dark-card {
+        background: #111111;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    .dark-card:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        transform: translateY(-2px);
+    }
+
+    /* ── Stagger entrance ── */
+    .fade-up {
+        animation: fadeUp 0.5s cubic-bezier(.4,0,.2,1) both;
+    }
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .nav-fade-in {
+        animation: fadeUp 0.5s cubic-bezier(.4,0,.2,1) both;
+    }
+
+    /* ── Smooth section transitions ── */
+    .section-enter {
+        animation: sectionIn 0.4s cubic-bezier(.4,0,.2,1) both;
+    }
+    @keyframes sectionIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Subtle glow on interactive elements ── */
+    .glow-hover:hover {
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.06);
+    }
+
+    /* ── Modern scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    /* ── Dot pulse for countdowns ── */
+    .dot-pulse::before {
+        content: '';
+        display: inline-block;
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: #fff;
+        margin-right: 6px;
+        animation: dotPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes dotPulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.7); }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-[#0a0a0a] text-white">
+    <!-- Navigation -->
+    <nav id="main-nav" class="glass-nav sticky top-0 z-40 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-8">
+                    <!-- Logo -->
+                    <a href="#" onclick="navigateTo('dashboard');return false" class="flex items-center space-x-2.5 group">
+                        <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-lg shadow-white/10 group-hover:shadow-white/20 transition-all duration-300 group-hover:scale-105">
+                            <svg class="w-[18px] h-[18px] text-black" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4.09 12.36a1 1 0 00.78 1.64H11l-1 8 8.91-10.36a1 1 0 00-.78-1.64H13l1-8z"/></svg>
+                        </div>
+                        <div>
+                            <h1 class="logo-text text-xl font-extrabold tracking-tight">AURA-EDU</h1>
+                            <span class="text-[10px] font-semibold uppercase tracking-widest text-neutral-500 leading-none">Student Portal</span>
+                        </div>
+                    </a>
+
+                    <!-- Desktop Nav Items -->
+                    <div class="hidden md:flex items-center space-x-1">
+                        <button onclick="navigateTo('dashboard')" id="nav-dashboard"
+                                class="nav-link nav-pill nav-fade-in active px-4 py-2 text-sm font-semibold rounded-xl text-white"
+                                style="animation-delay:0.05s">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+                                Dashboard
+                            </span>
+                        </button>
+                        <button onclick="navigateTo('courses')" id="nav-courses"
+                                class="nav-link nav-pill nav-fade-in px-4 py-2 text-sm font-semibold rounded-xl text-neutral-400 hover:text-white"
+                                style="animation-delay:0.1s">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+                                My Courses
+                            </span>
+                        </button>
+                        <!-- Academics Dropdown -->
+                        <div class="relative" id="academics-dropdown">
+                            <button onclick="toggleDropdown('academics')" id="nav-academics"
+                                    class="nav-link nav-pill nav-fade-in px-4 py-2 text-sm font-semibold rounded-xl text-neutral-400 hover:text-white"
+                                    style="animation-delay:0.15s">
+                                <span class="flex items-center gap-2">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                                    Academics
+                                    <svg class="w-3 h-3 transition-transform duration-200 dropdown-chevron" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                                </span>
+                            </button>
+                            <div id="dropdown-academics" class="dropdown-panel absolute left-0 mt-2 w-56 bg-[#161616]/95 backdrop-blur-xl rounded-2xl shadow-xl shadow-black/30 border border-white/10 py-2 z-50">
+                                <button onclick="navigateTo('exams')" class="w-full text-left px-4 py-3 text-sm text-neutral-300 hover:text-white hover:bg-white/5 flex items-center gap-3 transition-colors duration-150 rounded-lg mx-1" style="width:calc(100% - 8px)">
+                                    <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>
+                                    </div>
+                                    <div><div class="font-medium">Exams & Quizzes</div><div class="text-xs text-neutral-500">View all assessments</div></div>
+                                </button>
+                                <button onclick="navigateTo('grades')" class="w-full text-left px-4 py-3 text-sm text-neutral-300 hover:text-white hover:bg-white/5 flex items-center gap-3 transition-colors duration-150 rounded-lg mx-1" style="width:calc(100% - 8px)">
+                                    <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                                    </div>
+                                    <div><div class="font-medium">Grades</div><div class="text-xs text-neutral-500">Track your performance</div></div>
+                                </button>
+                                <button onclick="navigateTo('resources')" class="w-full text-left px-4 py-3 text-sm text-neutral-300 hover:text-white hover:bg-white/5 flex items-center gap-3 transition-colors duration-150 rounded-lg mx-1" style="width:calc(100% - 8px)">
+                                    <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 002-2V8a2 2 0 00-2-2h-7.93a2 2 0 01-1.66-.9l-.82-1.2A2 2 0 007.93 3H4a2 2 0 00-2 2v13c0 1.1.9 2 2 2z"/></svg>
+                                    </div>
+                                    <div><div class="font-medium">Resources</div><div class="text-xs text-neutral-500">Course materials & files</div></div>
+                                </button>
+                            </div>
+                        </div>
+                        <button onclick="navigateTo('classes')" id="nav-classes"
+                                class="nav-link nav-pill nav-fade-in px-4 py-2 text-sm font-semibold rounded-xl text-neutral-400 hover:text-white"
+                                style="animation-delay:0.2s">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l5 -3l0 9.5l-5 -3"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg>
+                                Classes
+                            </span>
+                        </button>
+                        <button onclick="navigateTo('calendar')" id="nav-calendar"
+                                class="nav-link nav-pill nav-fade-in px-4 py-2 text-sm font-semibold rounded-xl text-neutral-400 hover:text-white"
+                                style="animation-delay:0.25s">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+                                Calendar
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right side -->
+                <div class="flex items-center space-x-3">
+                    <span id="user-name" class="text-sm font-medium text-neutral-400 hidden sm:inline"></span>
+
+                    <!-- Mobile menu toggle -->
+                    <button id="mobile-toggle" onclick="toggleMobileNav()" class="md:hidden p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 transition-all duration-200">
+                        <svg id="hamburger-icon" class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        <svg id="close-icon" class="w-5 h-5 hidden transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+
+                    <!-- User avatar dropdown -->
+                    <div class="relative" id="user-dropdown-wrap">
+                        <button onclick="toggleDropdown('user')" class="avatar-ring flex items-center gap-2 p-1 rounded-full hover:bg-white/10 transition-all duration-200">
+                            <div class="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center text-sm font-bold shadow-lg shadow-white/10" id="user-avatar">?</div>
+                            <svg class="w-3.5 h-3.5 text-neutral-400 hidden sm:block transition-transform duration-200 dropdown-chevron" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div id="dropdown-user" class="dropdown-panel absolute right-0 mt-2 w-56 bg-[#161616]/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/50 border border-white/10 py-2 z-50">
+                            <div class="px-4 py-3 border-b border-white/10">
+                                <p class="text-sm font-semibold text-white" id="dropdown-name"></p>
+                                <p class="text-xs text-neutral-500 mt-0.5" id="dropdown-email"></p>
+                                <div class="mt-2">
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="text-neutral-500">Profile</span>
+                                        <span class="text-neutral-400" id="dropdown-completion">0%</span>
+                                    </div>
+                                    <div class="w-full bg-white/10 rounded-full h-1"><div id="dropdown-progress-bar" class="h-1 rounded-full bg-white transition-all duration-500" style="width:0%"></div></div>
+                                </div>
+                            </div>
+                            <button onclick="navigateTo('profile');closeAllDropdowns()" class="w-full flex items-center gap-3 text-left px-4 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-white/5 transition-colors duration-150">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                Profile
+                            </button>
+                            <button onclick="navigateTo('profile');closeAllDropdowns();setTimeout(()=>document.getElementById('change-pw-section').scrollIntoView({behavior:'smooth'}),200)" class="w-full flex items-center gap-3 text-left px-4 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-white/5 transition-colors duration-150">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                                Change Password
+                            </button>
+                            <div class="my-1 border-t border-white/5"></div>
+                            <button onclick="logout()" class="w-full flex items-center gap-3 text-left px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors duration-150">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Nav -->
+        <div id="mobile-nav" class="mobile-panel md:hidden border-t border-white/5 bg-[#0a0a0a]/95 backdrop-blur-lg px-4 py-0">
+            <div class="py-3 space-y-1">
+                <button onclick="navigateTo('dashboard')" class="mobile-nav-link w-full text-left px-4 py-2.5 text-sm font-semibold rounded-xl text-white bg-white/10 flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+                    Dashboard
+                </button>
+                <button onclick="navigateTo('courses')" class="mobile-nav-link w-full text-left px-4 py-2.5 text-sm font-medium rounded-xl text-neutral-400 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+                    My Courses
+                </button>
+                <button onclick="navigateTo('exams')" class="mobile-nav-link w-full text-left px-4 py-2.5 text-sm font-medium rounded-xl text-neutral-400 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>
+                    Exams & Quizzes
+                </button>
+                <button onclick="navigateTo('grades')" class="mobile-nav-link w-full text-left px-4 py-2.5 text-sm font-medium rounded-xl text-neutral-400 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    Grades
+                </button>
+                <button onclick="navigateTo('resources')" class="mobile-nav-link w-full text-left px-4 py-2.5 text-sm font-medium rounded-xl text-neutral-400 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 002-2V8a2 2 0 00-2-2h-7.93a2 2 0 01-1.66-.9l-.82-1.2A2 2 0 007.93 3H4a2 2 0 00-2 2v13c0 1.1.9 2 2 2z"/></svg>
+                    Resources
+                </button>
+                <button onclick="navigateTo('classes')" class="mobile-nav-link w-full text-left px-4 py-2.5 text-sm font-medium rounded-xl text-neutral-400 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l5 -3l0 9.5l-5 -3"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg>
+                    Classes
+                </button>
+                <button onclick="navigateTo('calendar')" class="mobile-nav-link w-full text-left px-4 py-2.5 text-sm font-medium rounded-xl text-neutral-400 hover:bg-white/5 hover:text-white flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+                    Calendar
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- ═══════ DASHBOARD SECTION ═══════ -->
+    <div id="section-dashboard">
+        <!-- Two-column layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- My Courses -->
+            <div class="lg:col-span-2">
+                <div class="dark-card">
+                    <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-white">My Courses</h2>
+                        <button onclick="showAvailableCourses()"
+                                class="text-sm bg-white hover:bg-neutral-200 text-black px-4 py-2 rounded-lg transition-all duration-200">
+                            + Browse Courses
+                        </button>
+                    </div>
+                    <div id="courses-list" class="divide-y divide-white/5">
+                        <div class="p-6 text-center text-neutral-500">Loading courses...</div>
+                    </div>
+                </div>
+
+                <!-- Available Exams (dashboard preview) -->
+                <div class="dark-card mt-8">
+                    <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-white">Upcoming Exams</h2>
+                        <button onclick="navigateTo('exams')" class="text-sm text-neutral-400 hover:text-white font-medium transition-colors">View All &rarr;</button>
+                    </div>
+                    <div id="exams-list" class="divide-y divide-white/5">
+                        <div class="p-6 text-center text-neutral-500">Loading exams...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div>
+
+                <!-- Upcoming Classes -->
+                <div class="dark-card mt-6">
+                    <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-white">Live Classes</h2>
+                        <button onclick="navigateTo('classes')" class="text-sm text-neutral-400 hover:text-white font-medium transition-colors">View All &rarr;</button>
+                    </div>
+                    <div id="dashboard-classes-list" class="divide-y divide-white/5">
+                        <div class="p-4 text-center text-neutral-500 text-sm">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Recent Results -->
+                <div class="dark-card">
+                    <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-white">Recent Results</h2>
+                        <button onclick="navigateTo('grades')" class="text-sm text-neutral-400 hover:text-white font-medium transition-colors">All Grades &rarr;</button>
+                    </div>
+                    <div id="results-list" class="divide-y divide-white/5">
+                        <div class="p-4 text-center text-neutral-500 text-sm">Loading...</div>
+                    </div>
+                </div>
+
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ COURSES SECTION ═══════ -->
+    <div id="section-courses" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-white">My Courses</h2>
+            <button onclick="showAvailableCourses()"
+                    class="bg-white hover:bg-neutral-200 text-black text-sm px-4 py-2 rounded-lg transition-all duration-200">+ Browse Courses</button>
+        </div>
+        <div id="courses-full-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="text-center text-neutral-500 col-span-3">Loading...</div>
+        </div>
+    </div>
+
+    <!-- ═══════ EXAMS SECTION ═══════ -->
+    <div id="section-exams" class="hidden">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white">Exams & Quizzes</h2>
+            <p class="text-sm text-neutral-500 mt-1">All assessments from your enrolled courses</p>
+        </div>
+        <div id="exams-full-list" class="space-y-4">
+            <div class="text-center text-neutral-500">Loading...</div>
+        </div>
+    </div>
+
+    <!-- ═══════ GRADES SECTION ═══════ -->
+    <div id="section-grades" class="hidden">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white">Grades & Results</h2>
+            <p class="text-sm text-neutral-500 mt-1">Your performance across all assessments</p>
+        </div>
+        <!-- Grade summary cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="dark-card p-6 text-center">
+                <div class="text-3xl font-bold text-white" id="grade-avg">-</div>
+                <div class="text-sm text-neutral-500 mt-1">Average Score</div>
+            </div>
+            <div class="dark-card p-6 text-center">
+                <div class="text-3xl font-bold text-white" id="grade-highest">-</div>
+                <div class="text-sm text-neutral-500 mt-1">Highest Score</div>
+            </div>
+            <div class="dark-card p-6 text-center">
+                <div class="text-3xl font-bold text-white" id="grade-total">-</div>
+                <div class="text-sm text-neutral-500 mt-1">Exams Taken</div>
+            </div>
+        </div>
+        <!-- Grades table -->
+        <div class="dark-card overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-white/5 border-b border-white/10">
+                        <tr>
+                            <th class="text-left py-3 px-4 font-medium text-neutral-400">Exam</th>
+                            <th class="text-left py-3 px-4 font-medium text-neutral-400">Course</th>
+                            <th class="text-left py-3 px-4 font-medium text-neutral-400">Type</th>
+                            <th class="text-center py-3 px-4 font-medium text-neutral-400">Score</th>
+                            <th class="text-center py-3 px-4 font-medium text-neutral-400">Grade</th>
+                            <th class="text-left py-3 px-4 font-medium text-neutral-400">Status</th>
+                            <th class="text-left py-3 px-4 font-medium text-neutral-400">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="grades-table-body" class="divide-y divide-white/5">
+                        <tr><td colspan="7" class="py-8 text-center text-neutral-500">Loading grades...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ RESOURCES SECTION ═══════ -->
+    <div id="section-resources" class="hidden">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white">Course Resources</h2>
+            <p class="text-sm text-neutral-500 mt-1">Materials and documents from all your courses</p>
+        </div>
+        <div id="resources-list" class="space-y-6">
+            <div class="text-center text-neutral-500">Loading resources...</div>
+        </div>
+    </div>
+
+    <!-- ═══════ CLASSES SECTION ═══════ -->
+    <div id="section-classes" class="hidden">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white">Live Classes</h2>
+            <p class="text-sm text-neutral-500 mt-1">Scheduled meeting links from your lecturers</p>
+        </div>
+        <div id="classes-list" class="space-y-4">
+            <div class="text-center text-neutral-500">Loading classes...</div>
+        </div>
+    </div>
+
+    <!-- ═══════ PROFILE SECTION ═══════ -->
+    <div id="section-profile" class="hidden">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white">My Profile</h2>
+            <p class="text-sm text-neutral-500 mt-1">Manage your account and profile settings</p>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Profile card -->
+            <div class="lg:col-span-1">
+                <div class="dark-card p-6 text-center">
+                    <div class="relative inline-block mb-4">
+                        <div id="profile-avatar-large" class="w-28 h-28 rounded-full bg-white/10 border-2 border-white/10 flex items-center justify-center text-3xl font-bold text-neutral-400 overflow-hidden mx-auto">?</div>
+                        <button onclick="document.getElementById('profile-photo-input').click()" class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        </button>
+                        <input type="file" id="profile-photo-input" accept="image/png,image/jpeg,image/jpg,image/webp" class="hidden" onchange="uploadProfilePhoto(this)">
+                    </div>
+                    <h3 class="text-lg font-semibold text-white" id="profile-fullname">-</h3>
+                    <p class="text-sm text-neutral-500" id="profile-email">-</p>
+                    <p class="text-xs text-neutral-500 mt-1" id="profile-joined">-</p>
+
+                    <!-- Completion progress -->
+                    <div class="mt-6 text-left">
+                        <div class="flex items-center justify-between text-sm mb-2">
+                            <span class="text-neutral-400">Profile Completion</span>
+                            <span class="font-semibold text-white" id="profile-pct">0%</span>
+                        </div>
+                        <div class="w-full bg-white/10 rounded-full h-2 mb-4">
+                            <div id="profile-progress-bar" class="h-2 rounded-full bg-gradient-to-r from-white/80 to-white transition-all duration-500" style="width:0%"></div>
+                        </div>
+                        <div class="space-y-2" id="profile-checklist"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile edit form -->
+            <div class="lg:col-span-2">
+                <div class="dark-card p-6">
+                    <h3 class="text-lg font-semibold text-white mb-6">Account Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-400 mb-1">First Name</label>
+                            <input id="profile-fname" type="text" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/30">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-400 mb-1">Last Name</label>
+                            <input id="profile-lname" type="text" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/30">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-neutral-400 mb-1">Phone Number</label>
+                        <input id="profile-phone" type="tel" placeholder="e.g. +27 123 456 789" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/30">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-neutral-400 mb-1">Bio</label>
+                        <textarea id="profile-bio" rows="3" placeholder="Tell us about yourself..." class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/30 resize-none"></textarea>
+                    </div>
+                    <button onclick="saveProfile()" class="bg-white hover:bg-neutral-200 text-black text-sm px-6 py-2.5 rounded-lg font-medium transition-all duration-200">Save Changes</button>
+                    <span id="profile-save-status" class="ml-3 text-sm text-green-400 hidden">Saved!</span>
+
+                    <!-- Share Contact Toggle -->
+                    <div class="mt-6 pt-5 border-t border-white/5">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-sm font-medium text-white">Share Contact Info</h4>
+                                <p class="text-xs text-neutral-500 mt-0.5">Allow students to see your email and phone when viewing your course lectures</p>
+                            </div>
+                            <button id="share-contact-toggle" onclick="toggleShareContact()" class="relative w-11 h-6 rounded-full bg-white/10 transition-colors duration-200 focus:outline-none">
+                                <span id="share-contact-knob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-neutral-400 transition-all duration-200"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Face Registration -->
+                <div class="dark-card p-6 mt-6">
+                    <h3 class="text-lg font-semibold text-white mb-2">Face Verification</h3>
+                    <p class="text-sm text-neutral-500 mb-4">Register your face for exam identity verification. Look directly at the camera.</p>
+                    <div class="flex items-start gap-6">
+                        <div class="flex-shrink-0">
+                            <div id="face-preview" class="w-32 h-32 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                                <svg class="w-10 h-10 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div id="face-status" class="text-sm text-neutral-400 mb-3">
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                    Not registered
+                                </span>
+                            </div>
+                            <button onclick="startFaceCapture()" id="face-capture-btn" class="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded-lg font-medium transition-all duration-200">
+                                <span class="flex items-center gap-2">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                    Capture Face
+                                </span>
+                            </button>
+                            <p id="face-error" class="text-xs text-red-400 mt-2 hidden"></p>
+                        </div>
+                    </div>
+                    <!-- Hidden video/canvas for face capture -->
+                    <video id="face-video" class="hidden" autoplay playsinline></video>
+                    <canvas id="face-canvas" class="hidden"></canvas>
+                </div>
+
+                <!-- Change Password -->
+                <div id="change-pw-section" class="dark-card p-6 mt-6">
+                    <h3 class="text-lg font-semibold text-white mb-2">Change Password</h3>
+                    <p class="text-sm text-neutral-500 mb-4">Update your account password. You'll need your current password to confirm.</p>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-400 mb-1">Current Password</label>
+                            <input id="pw-current" type="password" placeholder="Enter current password" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/30">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-400 mb-1">New Password</label>
+                            <input id="pw-new" type="password" placeholder="Min. 8 characters" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/30">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-400 mb-1">Confirm New Password</label>
+                            <input id="pw-confirm" type="password" placeholder="Repeat new password" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/30">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 mt-5">
+                        <button onclick="changePassword()" class="bg-white hover:bg-neutral-200 text-black text-sm px-6 py-2.5 rounded-lg font-medium transition-all duration-200">Update Password</button>
+                        <span id="pw-status" class="text-sm hidden"></span>
+                    </div>
+                    <p id="pw-error" class="text-xs text-red-400 mt-2 hidden"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ CALENDAR SECTION ═══════ -->
+    <div id="section-calendar" class="hidden">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white">Calendar</h2>
+            <p class="text-sm text-neutral-500 mt-1">Upcoming exams, deadlines, and important dates</p>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Calendar widget -->
+            <div class="lg:col-span-2 dark-card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)" class="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h3 id="calendar-month" class="text-lg font-semibold text-white"></h3>
+                    <button onclick="changeMonth(1)" class="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+                <div class="grid grid-cols-7 gap-px bg-white/10 rounded-lg overflow-hidden">
+                    <div class="bg-white/5 py-2 text-center text-xs font-medium text-neutral-500">Sun</div>
+                    <div class="bg-white/5 py-2 text-center text-xs font-medium text-neutral-500">Mon</div>
+                    <div class="bg-white/5 py-2 text-center text-xs font-medium text-neutral-500">Tue</div>
+                    <div class="bg-white/5 py-2 text-center text-xs font-medium text-neutral-500">Wed</div>
+                    <div class="bg-white/5 py-2 text-center text-xs font-medium text-neutral-500">Thu</div>
+                    <div class="bg-white/5 py-2 text-center text-xs font-medium text-neutral-500">Fri</div>
+                    <div class="bg-white/5 py-2 text-center text-xs font-medium text-neutral-500">Sat</div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-white/10 rounded-b-lg overflow-hidden"></div>
+            </div>
+            <!-- Upcoming events sidebar -->
+            <div>
+                <div class="dark-card">
+                    <div class="p-4 border-b border-white/5">
+                        <h3 class="font-semibold text-white">Upcoming Events</h3>
+                    </div>
+                    <div id="calendar-events" class="divide-y divide-white/5">
+                        <div class="p-4 text-center text-neutral-500 text-sm">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </main>
+</div>
+
+<!-- Profile Setup Modal (shown on first login) -->
+<div id="profile-setup-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+    <div class="bg-[#111111] border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="p-6 border-b border-white/5">
+            <h3 class="text-lg font-semibold text-white">Complete Your Profile</h3>
+            <p class="text-sm text-neutral-400 mt-1">Upload a profile photo to get started. This image will be used for exam verification.</p>
+        </div>
+        <div class="p-6">
+            <!-- Step indicator -->
+            <div class="flex items-center gap-3 mb-6">
+                <div id="setup-step-1" class="flex items-center gap-2 text-sm font-medium text-white">
+                    <span class="w-6 h-6 rounded-full bg-white text-black flex items-center justify-center text-xs font-bold">1</span>
+                    Photo
+                </div>
+                <div class="flex-1 h-px bg-white/10"></div>
+                <div id="setup-step-2" class="flex items-center gap-2 text-sm font-medium text-neutral-500">
+                    <span class="w-6 h-6 rounded-full bg-white/10 text-neutral-400 flex items-center justify-center text-xs font-bold">2</span>
+                    Details
+                </div>
+            </div>
+
+            <!-- Step 1: Photo upload -->
+            <div id="setup-page-1">
+                <div class="flex flex-col items-center">
+                    <div id="setup-avatar-preview" class="w-28 h-28 rounded-full bg-white/10 border-2 border-dashed border-white/20 flex items-center justify-center mb-4 overflow-hidden cursor-pointer hover:border-white/40 transition-colors" onclick="document.getElementById('setup-photo-input').click()">
+                        <svg class="w-10 h-10 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    </div>
+                    <input type="file" id="setup-photo-input" accept="image/png,image/jpeg,image/jpg,image/webp" class="hidden" onchange="handleSetupPhoto(this)">
+                    <p class="text-sm text-neutral-400 mb-1">Click to upload your photo</p>
+                    <p class="text-xs text-neutral-500">PNG, JPG or WebP • This is required for exams</p>
+                    <p id="setup-photo-error" class="text-xs text-red-400 mt-2 hidden"></p>
+                </div>
+                <button id="setup-next-btn" onclick="setupNextStep()" disabled class="w-full mt-6 bg-white/10 text-neutral-500 px-4 py-2.5 rounded-lg cursor-not-allowed text-sm font-medium transition-all">
+                    Continue
+                </button>
+            </div>
+
+            <!-- Step 2: Details -->
+            <div id="setup-page-2" class="hidden">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Phone Number</label>
+                        <input id="setup-phone" type="tel" placeholder="e.g. +27 123 456 789" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/30">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Short Bio</label>
+                        <textarea id="setup-bio" rows="3" placeholder="Tell us about yourself..." class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/30 resize-none"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="setupPrevStep()" class="flex-1 bg-white/5 hover:bg-white/10 text-neutral-300 px-4 py-2.5 rounded-lg text-sm font-medium transition-all">Back</button>
+                    <button onclick="finishSetup()" class="flex-1 bg-white hover:bg-neutral-200 text-black px-4 py-2.5 rounded-lg text-sm font-medium transition-all">Finish Setup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Available Courses Modal -->
+<div id="courses-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-[#111111] border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
+        <div class="p-6 border-b border-white/5 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-white">Available Courses</h3>
+            <button onclick="document.getElementById('courses-modal').classList.add('hidden')"
+                    class="text-neutral-500 hover:text-white text-2xl transition-colors">&times;</button>
+        </div>
+        <div id="available-courses" class="p-6 overflow-y-auto max-h-[60vh] space-y-3 text-neutral-400">
+            Loading...
+        </div>
+    </div>
+</div>
+
+<!-- Course Detail Modal -->
+<div id="course-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="p-5 pb-0">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 id="course-modal-title" class="text-xl font-bold text-white">Course</h3>
+                    <p id="course-modal-meta" class="text-sm text-neutral-500 mt-0.5"></p>
+                </div>
+                <button onclick="document.getElementById('course-modal').classList.add('hidden')" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-neutral-400 hover:text-white transition-all">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <!-- Tabs -->
+            <div class="flex gap-1 bg-white/5 p-1 rounded-xl">
+                <button id="tab-lectures" onclick="switchTab('lectures')" class="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-semibold rounded-lg bg-white text-black transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+                    Lectures
+                </button>
+                <button id="tab-materials" onclick="switchTab('materials')" class="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-semibold rounded-lg text-neutral-400 hover:text-neutral-200 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Materials
+                </button>
+            </div>
+        </div>
+        <!-- Content -->
+        <div id="course-content" class="p-5 overflow-y-auto flex-1">
+            <div class="text-center text-neutral-500 py-8">Loading...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const user = AUTH.getUser();
+if (!user || user.role !== 'student') { window.location.href = '/login'; }
+document.getElementById('user-name').textContent = `${user.first_name} ${user.last_name}`;
+document.getElementById('dropdown-name').textContent = `${user.first_name} ${user.last_name}`;
+document.getElementById('dropdown-email').textContent = user.email || '';
+
+// Set avatar — use profile image if available, otherwise initials
+function setAvatarDisplay(imgUrl) {
+    const avatarEl = document.getElementById('user-avatar');
+    if (imgUrl) {
+        avatarEl.innerHTML = `<img src="/uploads/${imgUrl}" class="w-full h-full object-cover rounded-full" alt="Avatar">`;
+    } else {
+        avatarEl.textContent = (user.first_name[0] + user.last_name[0]).toUpperCase();
+    }
+}
+setAvatarDisplay(user.profile_image);
+
+// Update dropdown completion bar
+function updateDropdownCompletion(pct) {
+    document.getElementById('dropdown-completion').textContent = pct + '%';
+    document.getElementById('dropdown-progress-bar').style.width = pct + '%';
+}
+updateDropdownCompletion(user.profile_complete || 0);
+
+// ═══════ NAVIGATION ═══════
+let currentSection = 'dashboard';
+const sections = ['dashboard', 'courses', 'exams', 'grades', 'resources', 'classes', 'calendar', 'profile'];
+
+function navigateTo(section) {
+    // Hide all sections
+    sections.forEach(s => {
+        const el = document.getElementById('section-' + s);
+        if (el) el.classList.add('hidden');
+    });
+    // Show target with a fade-in effect
+    const target = document.getElementById('section-' + section);
+    if (target) {
+        target.classList.remove('hidden');
+        target.style.animation = 'none';
+        target.offsetHeight; // trigger reflow
+        target.style.animation = 'nav-slide-up 0.35s cubic-bezier(.4,0,.2,1) both';
+    }
+
+    // Update desktop nav active states
+    document.querySelectorAll('.nav-link').forEach(btn => {
+        btn.classList.remove('active', 'text-white');
+        btn.classList.add('text-neutral-400');
+    });
+    const activeNav = document.getElementById('nav-' + section) || document.getElementById('nav-academics');
+    if (activeNav) {
+        activeNav.classList.remove('text-neutral-400');
+        activeNav.classList.add('active', 'text-white');
+    }
+    if (['exams', 'grades', 'resources'].includes(section)) {
+        const acNav = document.getElementById('nav-academics');
+        if (acNav) {
+            acNav.classList.remove('text-neutral-400');
+            acNav.classList.add('active', 'text-white');
+        }
+    }
+
+    // Update mobile nav
+    document.querySelectorAll('.mobile-nav-link').forEach(btn => {
+        btn.classList.remove('text-white', 'bg-white/10', 'font-semibold');
+        btn.classList.add('text-neutral-400', 'font-medium');
+    });
+
+    // Close dropdowns & mobile nav
+    closeAllDropdowns();
+    const mobileNav = document.getElementById('mobile-nav');
+    mobileNav.classList.remove('open');
+    document.getElementById('hamburger-icon').classList.remove('hidden');
+    document.getElementById('close-icon').classList.add('hidden');
+
+    currentSection = section;
+
+    // Load section data
+    if (section === 'dashboard') loadDashboard();
+    else if (section === 'courses') loadCoursesPage();
+    else if (section === 'exams') loadExamsPage();
+    else if (section === 'grades') loadGradesPage();
+    else if (section === 'resources') loadResourcesPage();
+    else if (section === 'classes') loadClassesPage();
+    else if (section === 'calendar') loadCalendarPage();
+    else if (section === 'profile') loadProfilePage();
+}
+
+function toggleMobileNav() {
+    const mobileNav = document.getElementById('mobile-nav');
+    const isOpen = mobileNav.classList.contains('open');
+    mobileNav.classList.toggle('open');
+    document.getElementById('hamburger-icon').classList.toggle('hidden', !isOpen);
+    document.getElementById('close-icon').classList.toggle('hidden', isOpen);
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-panel').forEach(d => {
+        d.classList.remove('open');
+    });
+    document.querySelectorAll('.dropdown-chevron').forEach(c => {
+        c.style.transform = '';
+    });
+}
+
+function toggleDropdown(name) {
+    const dd = document.getElementById('dropdown-' + name);
+    const isOpen = dd.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        dd.classList.add('open');
+        // Rotate the chevron
+        const btn = dd.previousElementSibling || dd.closest('.relative').querySelector('button');
+        const chevron = btn ? btn.querySelector('.dropdown-chevron') : null;
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#academics-dropdown') && !e.target.closest('#user-dropdown-wrap')) {
+        closeAllDropdowns();
+    }
+});
+
+// Glassmorphism scroll effect
+window.addEventListener('scroll', () => {
+    const nav = document.getElementById('main-nav');
+    if (window.scrollY > 10) nav.classList.add('scrolled');
+    else nav.classList.remove('scrolled');
+}, { passive: true });
+
+// ═══════ COURSES PAGE ═══════
+async function loadCoursesPage() {
+    const container = document.getElementById('courses-full-list');
+    container.innerHTML = '<div class="text-center text-neutral-500 col-span-3">Loading courses...</div>';
+    const resp = await AUTH.fetch('/api/student/courses');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.items.length === 0) {
+        container.innerHTML = `<div class="col-span-3 text-center py-12">
+            <p class="text-neutral-500 mb-4">You haven't enrolled in any courses yet.</p>
+            <button onclick="showAvailableCourses()" class="bg-white hover:bg-neutral-200 text-black px-6 py-2 rounded-lg transition-all duration-200">Browse Courses</button>
+        </div>`;
+        return;
+    }
+    container.innerHTML = data.items.map(c => `
+        <div class="dark-card hover:border-white/20 transition cursor-pointer overflow-hidden" onclick="viewCourse(${c.id})">
+            <div class="h-1 bg-white/20"></div>
+            <div class="p-5">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xs bg-white/10 text-neutral-300 px-2 py-0.5 rounded-full font-medium">${c.code}</span>
+                    <span class="text-xs text-neutral-500">${c.category || 'General'}</span>
+                </div>
+                <h3 class="font-semibold text-white mb-1">${c.title}</h3>
+                <p class="text-sm text-neutral-400 line-clamp-2">${c.description || 'No description'}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ═══════ EXAMS PAGE ═══════
+async function loadExamsPage() {
+    const container = document.getElementById('exams-full-list');
+    container.innerHTML = '<div class="text-center text-neutral-500">Loading exams...</div>';
+    const resp = await AUTH.fetch('/api/student/exams');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.exams.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-neutral-500">No exams available for your enrolled courses.</div>';
+        return;
+    }
+
+    // Group by availability
+    const groups = { open: [], upcoming: [], closed: [] };
+    data.exams.forEach(e => {
+        const g = e.availability || 'open';
+        if (groups[g]) groups[g].push(e); else groups.open.push(e);
+    });
+
+    let html = '';
+    const renderGroup = (title, exams, color) => {
+        if (exams.length === 0) return '';
+        return `<div class="mb-8">
+            <h3 class="text-lg font-semibold text-neutral-300 mb-3 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-${color}-500"></span> ${title}
+            </h3>
+            <div class="space-y-3">${exams.map(e => renderExamCard(e)).join('')}</div>
+        </div>`;
+    };
+    html += renderGroup('Open Now', groups.open, 'green');
+    html += renderGroup('Upcoming', groups.upcoming, 'yellow');
+    html += renderGroup('Completed / Closed', groups.closed, 'gray');
+    container.innerHTML = html;
+    startCountdowns();
+}
+
+function renderExamCard(e) {
+    const isAwaitingRelease = e.submission_status === 'awaiting_release';
+    const done = e.submission_status === 'submitted' || e.submission_status === 'graded';
+    const inProgress = e.submission_status === 'in_progress';
+    const isUpcoming = e.availability === 'upcoming';
+    const isClosed = e.availability === 'closed';
+    const isOpen = e.availability === 'open';
+
+    let badge = '';
+    if (isAwaitingRelease) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">Awaiting Release</span>';
+    else if (done) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400">Completed</span>';
+    else if (inProgress) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">In Progress</span>';
+    else if (isUpcoming) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">Upcoming</span>';
+    else if (isClosed) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Closed</span>';
+    else badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/30 text-green-400">Open</span>';
+
+    let timeInfo = '';
+    if (isUpcoming && e.start_time) timeInfo = `<span class="exam-countdown text-xs text-yellow-400 font-medium" data-start="${e.start_time}" data-examid="${e.id}"></span>`;
+    else if (isOpen && e.end_time) timeInfo = `<span class="text-xs text-neutral-400">Closes: ${new Date(e.end_time).toLocaleString()}</span>`;
+
+    let btn = '';
+    if (isAwaitingRelease) btn = '<span class="text-sm font-medium text-blue-400">Results pending</span>';
+    else if (done) btn = `<span class="text-sm font-medium text-green-400">${e.total_score != null ? e.total_score + '/' + e.total_marks : 'Submitted'}</span>`;
+    else if (inProgress) btn = `<button onclick="startExam(${e.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded-lg transition-all duration-200">Continue</button>`;
+    else if (isOpen) btn = `<button onclick="startExam(${e.id})" class="bg-white hover:bg-neutral-200 text-black text-sm px-4 py-2 rounded-lg transition-all duration-200">Start Exam</button>`;
+    else if (isUpcoming) btn = `<button disabled class="bg-white/10 text-neutral-500 text-sm px-4 py-2 rounded-lg cursor-not-allowed">Not Yet Open</button>`;
+    else btn = `<button disabled class="bg-white/5 text-neutral-600 text-sm px-4 py-2 rounded-lg cursor-not-allowed">Closed</button>`;
+
+    return `
+    <div class="dark-card p-5 hover:border-white/20 transition-all duration-200">
+        <div class="flex justify-between items-start">
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1"><h3 class="font-medium text-white">${e.title}</h3>${badge}</div>
+                <p class="text-sm text-neutral-400">${e.course_title || ''} \u2022 ${e.exam_type.toUpperCase()} \u2022 ${e.duration_minutes} min \u2022 ${e.total_marks} marks</p>
+                ${e.start_time ? `<p class="text-xs text-neutral-500 mt-1">Opens: ${new Date(e.start_time).toLocaleString()}</p>` : ''}
+                ${timeInfo ? `<p class="mt-1">${timeInfo}</p>` : ''}
+            </div>
+            <div class="ml-4 flex-shrink-0">${btn}</div>
+        </div>
+    </div>`;
+}
+
+// ═══════ GRADES PAGE ═══════
+async function loadGradesPage() {
+    const tbody = document.getElementById('grades-table-body');
+    tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-neutral-500">Loading grades...</td></tr>';
+    const resp = await AUTH.fetch('/api/student/results');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const results = data.results || [];
+
+    // Summary stats
+    const graded = results.filter(r => r.total_score != null);
+    document.getElementById('grade-total').textContent = results.length;
+    if (graded.length > 0) {
+        const scores = graded.map(r => (r.total_score / (r.total_marks || 1)) * 100);
+        document.getElementById('grade-avg').textContent = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) + '%';
+        document.getElementById('grade-highest').textContent = Math.round(Math.max(...scores)) + '%';
+    } else {
+        document.getElementById('grade-avg').textContent = '-';
+        document.getElementById('grade-highest').textContent = '-';
+    }
+
+    if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-neutral-500">No exam results yet.</td></tr>';
+        return;
+    }
+
+    function letterGrade(pct) {
+        if (pct >= 70) return { letter: 'A', color: 'text-green-400 bg-green-900/40' };
+        if (pct >= 60) return { letter: 'B', color: 'text-blue-400 bg-blue-900/40' };
+        if (pct >= 50) return { letter: 'C', color: 'text-yellow-400 bg-yellow-900/40' };
+        if (pct >= 40) return { letter: 'D', color: 'text-orange-400 bg-orange-900/40' };
+        return { letter: 'F', color: 'text-red-400 bg-red-900/40' };
+    }
+
+    tbody.innerHTML = results.map(r => {
+        const isAwaiting = r.status === 'awaiting_release';
+        const pct = r.total_marks && r.total_score != null ? Math.round((r.total_score / r.total_marks) * 100) : null;
+        const g = pct != null ? letterGrade(pct) : { letter: '-', color: 'text-neutral-500 bg-white/10' };
+        const statusBadge = isAwaiting
+            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">Awaiting Release</span>'
+            : r.status === 'graded'
+            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400">Graded</span>'
+            : r.status === 'submitted'
+            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">Pending</span>'
+            : '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">' + (r.status || '-') + '</span>';
+        return `<tr class="hover:bg-white/5 transition-colors">
+            <td class="py-3 px-4 text-white font-medium">${r.exam_title || 'Exam'}</td>
+            <td class="py-3 px-4 text-neutral-400 text-xs">${r.course_title || '-'}</td>
+            <td class="py-3 px-4 text-neutral-400 text-xs uppercase">${r.exam_type || '-'}</td>
+            <td class="py-3 px-4 text-center font-bold ${isAwaiting ? 'text-blue-400' : pct != null && pct >= 50 ? 'text-green-400' : 'text-red-400'}">${isAwaiting ? '—' : r.total_score != null ? r.total_score + '/' + r.total_marks : '-'}</td>
+            <td class="py-3 px-4 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-bold ${isAwaiting ? 'text-blue-400 bg-blue-900/40' : g.color}">${isAwaiting ? '?' : g.letter}</span></td>
+            <td class="py-3 px-4">${statusBadge}</td>
+            <td class="py-3 px-4 text-neutral-500 text-xs">${r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : '-'}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ═══════ RESOURCES PAGE ═══════
+async function loadResourcesPage() {
+    const container = document.getElementById('resources-list');
+    container.innerHTML = '<div class="text-center text-neutral-500">Loading resources...</div>';
+    // Get enrolled courses first
+    const coursesResp = await AUTH.fetch('/api/student/courses');
+    if (!coursesResp.ok) return;
+    const coursesData = await coursesResp.json();
+    if (coursesData.items.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-neutral-500">Enroll in courses to see resources.</div>';
+        return;
+    }
+
+    const typeIcons = { pdf: '📄', video: '🎥', slide: '📊', document: '📝', other: '📎' };
+    let html = '';
+
+    for (const course of coursesData.items) {
+        const matResp = await AUTH.fetch(`/api/student/courses/${course.id}/materials`);
+        if (!matResp.ok) continue;
+        const matData = await matResp.json();
+        const materials = matData.materials || [];
+
+        html += `
+        <div class="dark-card overflow-hidden">
+            <div class="p-4 border-b border-white/5 bg-white/5">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs bg-white/10 text-neutral-300 px-2 py-0.5 rounded-full font-medium">${course.code}</span>
+                    <h3 class="font-semibold text-white">${course.title}</h3>
+                </div>
+            </div>
+            <div class="divide-y divide-white/5">
+                ${materials.length === 0 ? '<div class="p-4 text-center text-neutral-500 text-sm">No materials yet.</div>' :
+                materials.map(m => `
+                    <div class="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">${typeIcons[m.file_type] || typeIcons.other}</span>
+                            <div>
+                                <h4 class="text-sm font-medium text-white">${m.title}</h4>
+                                <p class="text-xs text-neutral-500">${m.file_type.toUpperCase()} • ${new Date(m.uploaded_at).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                        <a href="/uploads/${m.file_path}" target="_blank" rel="noopener"
+                           class="text-sm bg-white/10 text-neutral-300 px-3 py-1.5 rounded-lg hover:bg-white/20 transition-all duration-200 font-medium">Download</a>
+                    </div>
+                `).join('')}
+            </div>
+        </div>`;
+    }
+    container.innerHTML = html || '<div class="text-center py-12 text-neutral-500">No resources available.</div>';
+}
+
+// ═══════ CLASSES PAGE ═══════
+let classesCountdownInterval = null;
+async function loadClassesPage() {
+    const container = document.getElementById('classes-list');
+    container.innerHTML = '<div class="text-center text-neutral-500">Loading classes...</div>';
+    const resp = await AUTH.fetch('/api/student/classes');
+    if (!resp.ok) { container.innerHTML = '<div class="text-center text-red-400">Failed to load classes.</div>'; return; }
+    const data = await resp.json();
+    const classes = data.classes || [];
+    if (classes.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-neutral-500">No live classes scheduled for your courses.</div>';
+        return;
+    }
+
+    const now = new Date();
+    const upcoming = classes.filter(c => c.access_status === 'locked');
+    const available = classes.filter(c => c.access_status === 'unlocked');
+
+    const platformIcons = { zoom: '🔵', meet: '🟢', teams: '🟣', custom: '🔗' };
+    const platformLabels = { zoom: 'Zoom', meet: 'Google Meet', teams: 'MS Teams', custom: 'Custom' };
+
+    function renderClassCard(c) {
+        const sched = c.scheduled_at ? new Date(c.scheduled_at) : null;
+        const isLocked = c.access_status === 'locked';
+        const icon = platformIcons[c.platform] || platformIcons.custom;
+        const platLabel = platformLabels[c.platform] || c.platform;
+
+        return `
+        <div class="dark-card p-5 hover:border-white/20 transition-all duration-200 ${isLocked ? 'opacity-70' : ''}">
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <h3 class="font-medium text-white">${c.title}</h3>
+                        ${isLocked
+                            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">Locked</span>'
+                            : '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400">Available</span>'
+                        }
+                    </div>
+                    <p class="text-sm text-neutral-400">${c.course_title || ''} ${c.course_code ? '• ' + c.course_code : ''}</p>
+                    <div class="flex items-center gap-4 mt-2 text-xs text-neutral-500">
+                        <span>${icon} ${platLabel}</span>
+                        ${sched ? '<span>📅 ' + sched.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' }) + ' at ' + sched.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }) + '</span>' : ''}
+                        ${c.duration_minutes ? '<span>⏱ ' + c.duration_minutes + ' min</span>' : ''}
+                    </div>
+                    ${c.description ? '<p class="text-sm text-neutral-500 mt-2">' + c.description + '</p>' : ''}
+                    ${isLocked && sched ? '<p class="mt-2"><span class="class-countdown text-xs text-yellow-400 font-medium" data-start="' + c.scheduled_at + '"></span></p>' : ''}
+                </div>
+                <div class="ml-4 flex-shrink-0">
+                    ${isLocked
+                        ? '<button disabled class="bg-white/10 text-neutral-500 text-sm px-4 py-2 rounded-lg cursor-not-allowed flex items-center gap-2"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Locked</button>'
+                        : '<a href="' + c.meeting_link + '" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-neutral-200 text-black text-sm px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l5 -3l0 9.5l-5 -3"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg>Join Class</a>'
+                    }
+                </div>
+            </div>
+        </div>`;
+    }
+
+    let html = '';
+    if (available.length > 0) {
+        html += '<div class="mb-8"><h3 class="text-lg font-semibold text-neutral-300 mb-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-green-500"></span> Available Now</h3><div class="space-y-3">' + available.map(renderClassCard).join('') + '</div></div>';
+    }
+    if (upcoming.length > 0) {
+        html += '<div class="mb-8"><h3 class="text-lg font-semibold text-neutral-300 mb-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Upcoming</h3><div class="space-y-3">' + upcoming.map(renderClassCard).join('') + '</div></div>';
+    }
+    container.innerHTML = html;
+
+    // Start countdown for locked classes
+    if (classesCountdownInterval) clearInterval(classesCountdownInterval);
+    classesCountdownInterval = setInterval(() => {
+        const els = document.querySelectorAll('.class-countdown');
+        if (els.length === 0) { clearInterval(classesCountdownInterval); return; }
+        const now = new Date();
+        let needsRefresh = false;
+        els.forEach(el => {
+            const start = new Date(el.dataset.start);
+            const diff = start - now;
+            if (diff <= 0) { needsRefresh = true; return; }
+            const days = Math.floor(diff / 86400000);
+            const hrs = Math.floor((diff % 86400000) / 3600000);
+            const mins = Math.floor((diff % 3600000) / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            let parts = [];
+            if (days > 0) parts.push(days + 'd');
+            if (hrs > 0) parts.push(hrs + 'h');
+            parts.push(mins + 'm');
+            parts.push(secs + 's');
+            el.textContent = 'Unlocks in ' + parts.join(' ');
+        });
+        if (needsRefresh) { clearInterval(classesCountdownInterval); loadClassesPage(); }
+    }, 1000);
+}
+
+// ═══════ CALENDAR PAGE ═══════
+let calendarDate = new Date();
+let calendarExams = [];
+
+async function loadCalendarPage() {
+    // Fetch exams for calendar events
+    const resp = await AUTH.fetch('/api/student/exams');
+    if (resp.ok) {
+        const data = await resp.json();
+        calendarExams = data.exams || [];
+    }
+    renderCalendar();
+    renderCalendarEvents();
+}
+
+function changeMonth(delta) {
+    calendarDate.setMonth(calendarDate.getMonth() + delta);
+    renderCalendar();
+}
+
+function renderCalendar() {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('calendar-month').textContent = `${months[month]} ${year}`;
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    const grid = document.getElementById('calendar-grid');
+
+    // Build event lookup (day -> list of exams)
+    const eventDays = {};
+    calendarExams.forEach(e => {
+        if (e.start_time) {
+            const d = new Date(e.start_time);
+            if (d.getFullYear() === year && d.getMonth() === month) {
+                const day = d.getDate();
+                if (!eventDays[day]) eventDays[day] = [];
+                eventDays[day].push(e);
+            }
+        }
+    });
+
+    let cells = '';
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) {
+        cells += '<div class="bg-[#111111] p-2 min-h-[60px]"></div>';
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+        const events = eventDays[d] || [];
+        cells += `<div class="bg-[#111111] p-2 min-h-[60px] ${isToday ? 'ring-2 ring-inset ring-white' : ''}">
+            <span class="text-xs font-medium ${isToday ? 'text-white font-bold' : 'text-neutral-400'}">${d}</span>
+            ${events.map(ev => `<div class="mt-1 text-xs px-1 py-0.5 rounded ${ev.availability === 'open' ? 'bg-green-900/40 text-green-400' : ev.availability === 'upcoming' ? 'bg-yellow-900/40 text-yellow-400' : 'bg-white/10 text-neutral-400'} truncate" title="${ev.title}">${ev.title}</div>`).join('')}
+        </div>`;
+    }
+    grid.innerHTML = cells;
+}
+
+function renderCalendarEvents() {
+    const container = document.getElementById('calendar-events');
+    const now = new Date();
+    const upcoming = calendarExams
+        .filter(e => e.start_time && new Date(e.start_time) >= now)
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+        .slice(0, 8);
+
+    if (upcoming.length === 0) {
+        container.innerHTML = '<div class="p-4 text-center text-neutral-500 text-sm">No upcoming exams.</div>';
+        return;
+    }
+
+    container.innerHTML = upcoming.map(e => {
+        const d = new Date(e.start_time);
+        return `<div class="p-3 hover:bg-white/5 transition-colors">
+            <div class="flex items-start gap-3">
+                <div class="text-center min-w-[40px]">
+                    <div class="text-xs text-neutral-500">${d.toLocaleDateString('en', { month: 'short' })}</div>
+                    <div class="text-lg font-bold text-white">${d.getDate()}</div>
+                </div>
+                <div class="flex-1">
+                    <h4 class="text-sm font-medium text-white">${e.title}</h4>
+                    <p class="text-xs text-neutral-500">${e.course_title || ''}</p>
+                    <p class="text-xs text-neutral-400 mt-0.5">${d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })} • ${e.duration_minutes} min</p>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function loadDashboard() {
+    // Load courses
+    const coursesResp = await AUTH.fetch('/api/student/courses');
+    if (coursesResp.ok) {
+        const data = await coursesResp.json();
+        const list = document.getElementById('courses-list');
+        if (data.items.length === 0) {
+            list.innerHTML = '<div class="p-6 text-center text-neutral-500">No courses enrolled. Browse courses to get started.</div>';
+        } else {
+            list.innerHTML = data.items.map(c => `
+                <div class="p-4 hover:bg-white/5 transition-colors cursor-pointer" onclick="viewCourse(${c.id})">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-medium text-white">${c.title}</h3>
+                            <p class="text-sm text-neutral-400 mt-1">${c.code} • ${c.category || 'General'}</p>
+                        </div>
+                        <span class="bg-white/10 text-neutral-300 text-xs px-2 py-1 rounded-full">Active</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // Load exams
+    const examsResp = await AUTH.fetch('/api/student/exams');
+    if (examsResp.ok) {
+        const data = await examsResp.json();
+        const list = document.getElementById('exams-list');
+        if (data.exams.length === 0) {
+            list.innerHTML = '<div class="p-6 text-center text-neutral-500">No exams available right now.</div>';
+        } else {
+            list.innerHTML = data.exams.map(e => {
+                const done = e.submission_status === 'submitted' || e.submission_status === 'graded';
+                const inProgress = e.submission_status === 'in_progress';
+                const isUpcoming = e.availability === 'upcoming';
+                const isClosed = e.availability === 'closed';
+                const isOpen = e.availability === 'open';
+
+                // Status badge
+                let badge = '';
+                const isAwaitingRelease = e.submission_status === 'awaiting_release';
+                if (isAwaitingRelease) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">Awaiting Release</span>';
+                else if (done) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400">Completed</span>';
+                else if (inProgress) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">In Progress</span>';
+                else if (isUpcoming) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">Upcoming</span>';
+                else if (isClosed) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Closed</span>';
+                else badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/30 text-green-400">Open</span>';
+
+                // Time info
+                let timeInfo = '';
+                if (isUpcoming && e.start_time) {
+                    timeInfo = `<span class="exam-countdown text-xs text-yellow-400 font-medium" data-start="${e.start_time}" data-examid="${e.id}"></span>`;
+                } else if (isOpen && e.end_time) {
+                    timeInfo = `<span class="text-xs text-neutral-400">Closes: ${new Date(e.end_time).toLocaleString()}</span>`;
+                } else if (isClosed && e.end_time) {
+                    timeInfo = `<span class="text-xs text-neutral-500">Ended: ${new Date(e.end_time).toLocaleString()}</span>`;
+                }
+
+                // Button
+                let btn = '';
+                if (isAwaitingRelease) {
+                    btn = '<span class="text-sm font-medium text-blue-400">Results pending</span>';
+                } else if (done) {
+                    btn = `<span class="text-sm font-medium text-green-400">${e.total_score != null ? e.total_score + '/' + e.total_marks : 'Submitted'}</span>`;
+                } else if (inProgress) {
+                    btn = `<button onclick="startExam(${e.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded-lg transition-all duration-200">Continue</button>`;
+                } else if (isOpen) {
+                    btn = `<button onclick="startExam(${e.id})" class="bg-white hover:bg-neutral-200 text-black text-sm px-4 py-2 rounded-lg transition-all duration-200">Start Exam</button>`;
+                } else if (isUpcoming) {
+                    btn = `<button disabled class="bg-white/10 text-neutral-500 text-sm px-4 py-2 rounded-lg cursor-not-allowed" id="btn-exam-${e.id}">Not Yet Open</button>`;
+                } else {
+                    btn = `<button disabled class="bg-white/5 text-neutral-600 text-sm px-4 py-2 rounded-lg cursor-not-allowed">Closed</button>`;
+                }
+
+                return `
+                <div class="p-4 hover:bg-white/5 transition-colors">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="font-medium text-white">${e.title}</h3>
+                                ${badge}
+                            </div>
+                            <p class="text-sm text-neutral-400">${e.course_title || ''} • ${e.exam_type.toUpperCase()} • ${e.duration_minutes} min • ${e.total_marks} marks</p>
+                            ${e.start_time ? `<p class="text-xs text-neutral-500 mt-1">Opens: ${new Date(e.start_time).toLocaleString()}</p>` : ''}
+                            ${timeInfo ? `<p class="mt-1">${timeInfo}</p>` : ''}
+                        </div>
+                        <div class="ml-4 flex-shrink-0">${btn}</div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Start countdown timers for upcoming exams
+            startCountdowns();
+        }
+    }
+
+    // Load results
+    const resultsResp = await AUTH.fetch('/api/student/results');
+    if (resultsResp.ok) {
+        const data = await resultsResp.json();
+        const list = document.getElementById('results-list');
+        if (data.results.length === 0) {
+            list.innerHTML = '<div class="p-4 text-center text-neutral-500 text-sm">No results yet.</div>';
+        } else {
+            list.innerHTML = data.results.slice(0, 5).map(r => `
+                <div class="p-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-neutral-300">${r.exam_title || 'Exam'}</span>
+                        ${r.status === 'awaiting_release'
+                            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">Awaiting Release</span>'
+                            : `<span class="text-sm font-bold ${r.total_score >= (r.total_marks * 0.5) ? 'text-green-400' : 'text-red-400'}">
+                            ${r.total_score != null ? r.total_score + '/' + (r.total_marks || '?') : 'Pending'}
+                        </span>`
+                        }
+                    </div>
+                    <div class="text-xs text-neutral-500 mt-1">${r.status === 'awaiting_release' ? 'Graded — results pending lecturer release' : r.status}</div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // Load upcoming classes
+    const classesResp = await AUTH.fetch('/api/student/classes');
+    const dcList = document.getElementById('dashboard-classes-list');
+    if (classesResp.ok) {
+        const cData = await classesResp.json();
+        const classes = cData.classes || [];
+        if (classes.length === 0) {
+            dcList.innerHTML = '<div class="p-4 text-center text-neutral-500 text-sm">No classes scheduled.</div>';
+        } else {
+            const platformIcons = { zoom: '🔵', meet: '🟢', teams: '🟣', custom: '🔗' };
+            dcList.innerHTML = classes.slice(0, 4).map(c => {
+                const sched = c.scheduled_at ? new Date(c.scheduled_at) : null;
+                const isLocked = c.access_status === 'locked';
+                const icon = platformIcons[c.platform] || '🔗';
+                const dateStr = sched ? sched.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+                const timeStr = sched ? sched.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }) : '';
+                return `
+                <div class="p-4 hover:bg-white/5 transition-colors">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <h3 class="text-sm font-medium text-white truncate">${c.title}</h3>
+                                ${isLocked
+                                    ? '<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400 flex-shrink-0">Locked</span>'
+                                    : '<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-green-900/40 text-green-400 flex-shrink-0">Open</span>'
+                                }
+                            </div>
+                            <p class="text-xs text-neutral-500 truncate">${c.course_title || ''}</p>
+                            <p class="text-xs text-neutral-500 mt-0.5">${icon} ${dateStr}${timeStr ? ' at ' + timeStr : ''}</p>
+                        </div>
+                        ${!isLocked && c.meeting_link
+                            ? '<a href="' + c.meeting_link + '" target="_blank" rel="noopener noreferrer" class="ml-3 flex-shrink-0 bg-white hover:bg-neutral-200 text-black text-xs px-3 py-1.5 rounded-lg transition-all duration-200 font-medium">Join</a>'
+                            : ''
+                        }
+                    </div>
+                </div>`;
+            }).join('');
+        }
+    } else {
+        dcList.innerHTML = '<div class="p-4 text-center text-neutral-500 text-sm">Could not load classes.</div>';
+    }
+}
+
+async function showAvailableCourses() {
+    document.getElementById('courses-modal').classList.remove('hidden');
+    const resp = await AUTH.fetch('/api/student/courses/available');
+    if (resp.ok) {
+        const data = await resp.json();
+        const container = document.getElementById('available-courses');
+        if (data.items.length === 0) {
+            container.innerHTML = '<p class="text-neutral-500 text-center">No more courses available.</p>';
+        } else {
+            container.innerHTML = data.items.map(c => `
+                <div class="border border-white/10 rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-medium text-white">${c.title}</h4>
+                        <p class="text-xs text-neutral-500">${c.code}</p>
+                    </div>
+                    <button onclick="enrollCourse(${c.id})"
+                            class="bg-white hover:bg-neutral-200 text-black text-sm px-3 py-1.5 rounded-lg transition-all duration-200">Enroll</button>
+                </div>
+            `).join('');
+        }
+    }
+}
+
+async function enrollCourse(courseId) {
+    const resp = await AUTH.fetch(`/api/student/courses/${courseId}/enroll`, { method: 'POST' });
+    if (resp.ok) {
+        document.getElementById('courses-modal').classList.add('hidden');
+        loadDashboard();
+    }
+}
+
+function startExam(examId) {
+    // Double-check via API that exam is open before navigating
+    AUTH.fetch(`/api/student/exams/${examId}/start`, { method: 'POST' }).then(resp => {
+        if (resp.ok) {
+            window.location.href = `/exam/${examId}`;
+        } else {
+            resp.json().then(d => alert(d.error || 'Cannot start exam.')).catch(() => alert('Cannot start this exam yet.'));
+        }
+    });
+}
+
+let countdownInterval = null;
+function startCountdowns() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = setInterval(() => {
+        const els = document.querySelectorAll('.exam-countdown');
+        const now = new Date();
+        els.forEach(el => {
+            const start = new Date(el.dataset.start);
+            const diff = start - now;
+            if (diff <= 0) {
+                // Exam just opened — refresh to update buttons
+                clearInterval(countdownInterval);
+                loadDashboard();
+                return;
+            }
+            const days = Math.floor(diff / 86400000);
+            const hrs = Math.floor((diff % 86400000) / 3600000);
+            const mins = Math.floor((diff % 3600000) / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            let parts = [];
+            if (days > 0) parts.push(`${days}d`);
+            if (hrs > 0) parts.push(`${hrs}h`);
+            parts.push(`${mins}m`);
+            parts.push(`${secs}s`);
+            el.textContent = 'Opens in ' + parts.join(' ');
+        });
+    }, 1000);
+}
+
+let currentCourseId = null;
+let courseCache = { lectures: null, materials: null };
+
+async function viewCourse(courseId) {
+    currentCourseId = courseId;
+    courseCache = { lectures: null, materials: null };
+    document.getElementById('course-modal').classList.remove('hidden');
+    document.getElementById('course-modal-title').textContent = 'Loading...';
+    document.getElementById('course-modal-meta').textContent = '';
+    switchTab('lectures');
+}
+
+function switchTab(tab) {
+    const lecturesBtn = document.getElementById('tab-lectures');
+    const materialsBtn = document.getElementById('tab-materials');
+    const activeClass = 'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-semibold rounded-lg bg-white text-black transition-all duration-200';
+    const inactiveClass = 'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-semibold rounded-lg text-neutral-400 hover:text-neutral-200 transition-all duration-200';
+    if (tab === 'lectures') {
+        lecturesBtn.className = activeClass;
+        materialsBtn.className = inactiveClass;
+        loadLectures();
+    } else {
+        materialsBtn.className = activeClass;
+        lecturesBtn.className = inactiveClass;
+        loadMaterials();
+    }
+}
+
+let currentLecturer = null;
+
+async function loadLectures() {
+    const container = document.getElementById('course-content');
+    if (courseCache.lectures) { container.innerHTML = courseCache.lectures; bindLectureToggles(); return; }
+    container.innerHTML = '<div class="text-center text-neutral-500 py-8">Loading lectures...</div>';
+    const resp = await AUTH.fetch(`/api/student/courses/${currentCourseId}/lectures`);
+    if (resp.ok) {
+        const data = await resp.json();
+        currentLecturer = data.lecturer;
+        document.getElementById('course-modal-title').textContent = data.course_title || 'Course Resources';
+        const metaParts = [];
+        if (data.course_code) metaParts.push(data.course_code);
+        metaParts.push(data.lectures.length + ' lecture' + (data.lectures.length !== 1 ? 's' : ''));
+        if (data.lecturer) metaParts.push('by ' + data.lecturer.name);
+        document.getElementById('course-modal-meta').textContent = metaParts.join(' \u2022 ');
+        if (data.lectures.length === 0) {
+            courseCache.lectures = `<div class="text-center py-12">
+                <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+                </div>
+                <p class="text-neutral-500 text-sm">No lectures published yet</p>
+                <p class="text-neutral-600 text-xs mt-1">Check back later for new content</p>
+            </div>`;
+        } else {
+            courseCache.lectures = '<div class="space-y-3">' + data.lectures.map((l, i) => `
+                <div class="lecture-card group bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-xl transition-all duration-200 cursor-pointer" data-idx="${i}">
+                    <div class="p-4 lecture-toggle">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                                <span class="text-sm font-bold text-neutral-300">${String(i + 1).padStart(2, '0')}</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-semibold text-white text-[15px] group-hover:text-white/90">${l.title}</h4>
+                                <div class="flex items-center gap-3 mt-1.5">
+                                    ${l.duration_minutes ? `<span class="flex items-center gap-1 text-xs text-neutral-500"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${l.duration_minutes} min</span>` : ''}
+                                    <span class="flex items-center gap-1 text-xs text-neutral-500"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Lecture ${i + 1}</span>
+                                </div>
+                            </div>
+                            <svg class="lecture-chevron w-5 h-5 text-neutral-500 transition-transform duration-200 flex-shrink-0 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                    </div>
+                    <div class="lecture-details hidden border-t border-white/[0.06] px-4 pb-4 pt-3">
+                        ${l.content ? `<p class="text-sm text-neutral-400 leading-relaxed mb-4">${l.content}</p>` : ''}
+                        <div class="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3.5">
+                            <p class="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2.5">Lecturer</p>
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                    ${data.lecturer?.profile_image
+                                        ? `<img src="/uploads/${data.lecturer.profile_image}" class="w-full h-full object-cover" alt="">`
+                                        : `<svg class="w-4 h-4 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-white">${data.lecturer?.name || 'Lecturer'}</p>
+                                    ${data.lecturer?.contact_shared
+                                        ? `<div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                                            ${data.lecturer.email ? `<a href="mailto:${data.lecturer.email}" class="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white transition-colors"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>${data.lecturer.email}</a>` : ''}
+                                            ${data.lecturer.phone_number ? `<a href="tel:${data.lecturer.phone_number}" class="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white transition-colors"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>${data.lecturer.phone_number}</a>` : ''}
+                                        </div>`
+                                        : `<p class="text-xs text-neutral-600 mt-0.5">Contact info not shared</p>`}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('') + '</div>';
+        }
+        container.innerHTML = courseCache.lectures;
+        bindLectureToggles();
+    } else {
+        const err = await resp.json();
+        container.innerHTML = `<div class="text-center text-red-500 py-8">${err.error || 'Failed to load lectures'}</div>`;
+    }
+}
+
+function bindLectureToggles() {
+    document.querySelectorAll('.lecture-toggle').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+            const card = toggle.closest('.lecture-card');
+            const details = card.querySelector('.lecture-details');
+            const chevron = card.querySelector('.lecture-chevron');
+            const isOpen = !details.classList.contains('hidden');
+            // Close all others
+            document.querySelectorAll('.lecture-card').forEach(c => {
+                c.querySelector('.lecture-details').classList.add('hidden');
+                c.querySelector('.lecture-chevron').classList.remove('rotate-180');
+                c.classList.remove('bg-white/[0.05]', 'border-white/[0.12]');
+            });
+            if (!isOpen) {
+                details.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+                card.classList.add('bg-white/[0.05]', 'border-white/[0.12]');
+            }
+        });
+    });
+}
+
+const materialTypeConfig = {
+    pdf:      { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>', color: 'text-red-400 bg-red-500/10', label: 'PDF' },
+    video:    { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>', color: 'text-purple-400 bg-purple-500/10', label: 'Video' },
+    slide:    { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>', color: 'text-blue-400 bg-blue-500/10', label: 'Slides' },
+    document: { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>', color: 'text-green-400 bg-green-500/10', label: 'Document' },
+    other:    { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>', color: 'text-neutral-400 bg-white/10', label: 'File' }
+};
+
+async function loadMaterials() {
+    const container = document.getElementById('course-content');
+    if (courseCache.materials) { container.innerHTML = courseCache.materials; return; }
+    container.innerHTML = '<div class="text-center text-neutral-500 py-8">Loading materials...</div>';
+    const resp = await AUTH.fetch(`/api/student/courses/${currentCourseId}/materials`);
+    if (resp.ok) {
+        const data = await resp.json();
+        if (data.materials.length === 0) {
+            courseCache.materials = `<div class="text-center py-12">
+                <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <p class="text-neutral-500 text-sm">No materials uploaded yet</p>
+                <p class="text-neutral-600 text-xs mt-1">Your lecturer will add resources here</p>
+            </div>`;
+        } else {
+            courseCache.materials = '<div class="space-y-2.5">' + data.materials.map(m => {
+                const t = materialTypeConfig[m.file_type] || materialTypeConfig.other;
+                return `
+                <a href="/uploads/${m.file_path}" target="_blank" rel="noopener"
+                   class="group flex items-center gap-4 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-4 transition-all duration-200">
+                    <div class="w-11 h-11 rounded-xl ${t.color} flex items-center justify-center flex-shrink-0">
+                        ${t.icon}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold text-white text-[15px] truncate group-hover:text-white/90">${m.title}</h4>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs font-medium text-neutral-500 uppercase">${t.label}</span>
+                            ${m.ai_summary ? '<span class="text-xs text-neutral-600">\u2022</span><span class="flex items-center gap-1 text-xs text-neutral-500"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 1.6-1 3-2 4l-2 2-2-2c-1-1-2-2.4-2-4a4 4 0 014-4z"/><path d="M12 18v4"/></svg>AI Summary</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-white/5 group-hover:bg-white/10 flex items-center justify-center transition-all">
+                        <svg class="w-4 h-4 text-neutral-400 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </div>
+                </a>`;
+            }).join('') + '</div>';
+        }
+        container.innerHTML = courseCache.materials;
+    } else {
+        const err = await resp.json();
+        container.innerHTML = `<div class="text-center text-red-500 py-8">${err.error || 'Failed to load materials'}</div>`;
+    }
+}
+
+// ═══════ PROFILE PAGE ═══════
+async function loadProfilePage() {
+    // Fetch fresh user data from API
+    const resp = await AUTH.fetch('/api/auth/me');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const u = data.user;
+    // Update local storage
+    AUTH.setUser(u);
+    setAvatarDisplay(u.profile_image);
+    updateDropdownCompletion(u.profile_complete || 0);
+
+    // Fill profile card
+    document.getElementById('profile-fullname').textContent = `${u.first_name} ${u.last_name}`;
+    document.getElementById('profile-email').textContent = u.email;
+    document.getElementById('profile-joined').textContent = u.created_at ? 'Joined ' + new Date(u.created_at).toLocaleDateString('en', { month: 'long', year: 'numeric' }) : '';
+
+    // Avatar
+    const avatarLarge = document.getElementById('profile-avatar-large');
+    if (u.profile_image) {
+        avatarLarge.innerHTML = `<img src="/uploads/${u.profile_image}" class="w-full h-full object-cover" alt="Avatar">`;
+    } else {
+        avatarLarge.textContent = (u.first_name[0] + u.last_name[0]).toUpperCase();
+    }
+
+    // Completion
+    const pct = u.profile_complete || 0;
+    document.getElementById('profile-pct').textContent = pct + '%';
+    document.getElementById('profile-progress-bar').style.width = pct + '%';
+
+    // Checklist
+    const faceRegistered = !!u.face_registered;
+    const checks = [
+        { label: 'Profile Photo', done: !!u.profile_image, icon: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>' },
+        { label: 'Phone Number', done: !!u.phone_number, icon: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>' },
+        { label: 'Bio', done: !!u.bio, icon: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>' },
+        { label: 'Face Verification', done: faceRegistered, icon: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' },
+    ];
+
+    document.getElementById('profile-checklist').innerHTML = checks.map(c => `
+        <div class="flex items-center gap-2.5 text-sm ${c.done ? 'text-green-400' : 'text-neutral-500'}">
+            <span class="w-5 h-5 rounded-full ${c.done ? 'bg-green-900/40' : 'bg-white/5'} flex items-center justify-center text-xs">${c.done ? '✓' : '○'}</span>
+            <span class="flex items-center gap-1.5">${c.icon} ${c.label}</span>
+        </div>
+    `).join('');
+
+    // Fill form fields
+    document.getElementById('profile-fname').value = u.first_name || '';
+    document.getElementById('profile-lname').value = u.last_name || '';
+    document.getElementById('profile-phone').value = u.phone_number || '';
+    document.getElementById('profile-bio').value = u.bio || '';
+
+    // Share contact toggle state
+    const toggleBtn = document.getElementById('share-contact-toggle');
+    const knob = document.getElementById('share-contact-knob');
+    if (u.share_contact) {
+        toggleBtn.classList.remove('bg-white/10');
+        toggleBtn.classList.add('bg-green-500');
+        knob.classList.remove('left-0.5', 'bg-neutral-400');
+        knob.classList.add('left-[22px]', 'bg-white');
+    } else {
+        toggleBtn.classList.remove('bg-green-500');
+        toggleBtn.classList.add('bg-white/10');
+        knob.classList.remove('left-[22px]', 'bg-white');
+        knob.classList.add('left-0.5', 'bg-neutral-400');
+    }
+
+    // Face status
+    const faceStatus = document.getElementById('face-status');
+    if (faceRegistered) {
+        faceStatus.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span> Registered</span>';
+    } else {
+        faceStatus.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Not registered</span>';
+    }
+}
+
+async function uploadProfilePhoto(input) {
+    if (!input.files || !input.files[0]) return;
+    const formData = new FormData();
+    formData.append('image', input.files[0]);
+    const resp = await fetch('/api/auth/profile/image', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + AUTH.getToken() },
+        body: formData,
+    });
+    if (resp.ok) {
+        const data = await resp.json();
+        AUTH.setUser(data.user);
+        setAvatarDisplay(data.user.profile_image);
+        updateDropdownCompletion(data.user.profile_complete || 0);
+        loadProfilePage();
+    } else {
+        const err = await resp.json();
+        alert(err.error || 'Failed to upload image');
+    }
+}
+
+async function saveProfile() {
+    const body = {
+        first_name: document.getElementById('profile-fname').value.trim(),
+        last_name: document.getElementById('profile-lname').value.trim(),
+        phone_number: document.getElementById('profile-phone').value.trim(),
+        bio: document.getElementById('profile-bio').value.trim(),
+    };
+    const resp = await AUTH.fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (resp.ok) {
+        const data = await resp.json();
+        AUTH.setUser(data.user);
+        document.getElementById('user-name').textContent = `${data.user.first_name} ${data.user.last_name}`;
+        document.getElementById('dropdown-name').textContent = `${data.user.first_name} ${data.user.last_name}`;
+        updateDropdownCompletion(data.user.profile_complete || 0);
+        const status = document.getElementById('profile-save-status');
+        status.classList.remove('hidden');
+        setTimeout(() => status.classList.add('hidden'), 3000);
+        loadProfilePage();
+    }
+}
+
+async function toggleShareContact() {
+    const u = AUTH.getUser();
+    const newVal = !u.share_contact;
+    const resp = await AUTH.fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ share_contact: newVal }),
+    });
+    if (resp.ok) {
+        const data = await resp.json();
+        AUTH.setUser(data.user);
+        loadProfilePage();
+    }
+}
+
+async function changePassword() {
+    const current = document.getElementById('pw-current').value;
+    const newPw = document.getElementById('pw-new').value;
+    const confirm = document.getElementById('pw-confirm').value;
+    const errEl = document.getElementById('pw-error');
+    const statusEl = document.getElementById('pw-status');
+    errEl.classList.add('hidden');
+    statusEl.classList.add('hidden');
+
+    if (!current || !newPw || !confirm) {
+        errEl.textContent = 'All fields are required.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    if (newPw.length < 8) {
+        errEl.textContent = 'New password must be at least 8 characters.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    if (newPw !== confirm) {
+        errEl.textContent = 'New passwords do not match.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    const resp = await AUTH.fetch('/api/auth/change-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_password: current, new_password: newPw }),
+    });
+    if (resp.ok) {
+        statusEl.textContent = 'Password updated successfully!';
+        statusEl.className = 'text-sm text-green-400';
+        statusEl.classList.remove('hidden');
+        document.getElementById('pw-current').value = '';
+        document.getElementById('pw-new').value = '';
+        document.getElementById('pw-confirm').value = '';
+        setTimeout(() => statusEl.classList.add('hidden'), 4000);
+    } else {
+        const err = await resp.json().catch(() => ({}));
+        errEl.textContent = err.error || 'Failed to change password.';
+        errEl.classList.remove('hidden');
+    }
+}
+
+let faceStream = null;
+function startFaceCapture() {
+    const video = document.getElementById('face-video');
+    const preview = document.getElementById('face-preview');
+    const btn = document.getElementById('face-capture-btn');
+    const errEl = document.getElementById('face-error');
+    errEl.classList.add('hidden');
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 320 } })
+    .then(stream => {
+        faceStream = stream;
+        video.srcObject = stream;
+        video.classList.remove('hidden');
+        video.style.cssText = 'width:128px;height:128px;object-fit:cover;border-radius:12px;';
+        preview.innerHTML = '';
+        preview.appendChild(video);
+        btn.innerHTML = '<span class="flex items-center gap-2"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg> Take Photo</span>';
+        btn.onclick = captureFace;
+    })
+    .catch(() => {
+        errEl.textContent = 'Camera access denied. Please allow camera permissions.';
+        errEl.classList.remove('hidden');
+    });
+}
+
+async function captureFace() {
+    const video = document.getElementById('face-video');
+    const canvas = document.getElementById('face-canvas');
+    canvas.width = 320;
+    canvas.height = 320;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, 320, 320);
+
+    // Stop camera
+    if (faceStream) { faceStream.getTracks().forEach(t => t.stop()); faceStream = null; }
+    video.classList.add('hidden');
+
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    const preview = document.getElementById('face-preview');
+    preview.innerHTML = `<img src="${imageData}" class="w-full h-full object-cover rounded-xl" alt="Face">`;
+
+    const btn = document.getElementById('face-capture-btn');
+    btn.innerHTML = '<span class="flex items-center gap-2">Registering...</span>';
+    btn.disabled = true;
+
+    try {
+        const resp = await AUTH.fetch('/api/auth/profile/face', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageData }),
+        });
+
+        if (resp.ok) {
+            const data = await resp.json();
+            AUTH.setUser(data.user);
+            updateDropdownCompletion(data.user.profile_complete || 0);
+            document.getElementById('face-status').innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span>Registered</span>';
+            loadProfilePage();
+        } else {
+            const err = await resp.json().catch(() => ({}));
+            document.getElementById('face-error').textContent = err.error || 'Face registration failed. Please try again.';
+            document.getElementById('face-error').classList.remove('hidden');
+        }
+    } catch (e) {
+        document.getElementById('face-error').textContent = 'Network error. Please try again.';
+        document.getElementById('face-error').classList.remove('hidden');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<span class="flex items-center gap-2"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> Capture Face</span>';
+    btn.onclick = startFaceCapture;
+}
+
+// ═══════ PROFILE SETUP MODAL ═══════
+let setupPhotoFile = null;
+
+function handleSetupPhoto(input) {
+    if (!input.files || !input.files[0]) return;
+    setupPhotoFile = input.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('setup-avatar-preview').innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover" alt="Preview">`;
+        const btn = document.getElementById('setup-next-btn');
+        btn.disabled = false;
+        btn.className = 'w-full mt-6 bg-white hover:bg-neutral-200 text-black px-4 py-2.5 rounded-lg cursor-pointer text-sm font-medium transition-all';
+    };
+    reader.readAsDataURL(setupPhotoFile);
+}
+
+function setupNextStep() {
+    document.getElementById('setup-page-1').classList.add('hidden');
+    document.getElementById('setup-page-2').classList.remove('hidden');
+    document.getElementById('setup-step-1').querySelector('span').className = 'w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold';
+    document.getElementById('setup-step-2').querySelector('span').className = 'w-6 h-6 rounded-full bg-white text-black flex items-center justify-center text-xs font-bold';
+    document.getElementById('setup-step-2').classList.remove('text-neutral-500');
+    document.getElementById('setup-step-2').classList.add('text-white');
+}
+
+function setupPrevStep() {
+    document.getElementById('setup-page-2').classList.add('hidden');
+    document.getElementById('setup-page-1').classList.remove('hidden');
+    document.getElementById('setup-step-1').querySelector('span').className = 'w-6 h-6 rounded-full bg-white text-black flex items-center justify-center text-xs font-bold';
+    document.getElementById('setup-step-2').querySelector('span').className = 'w-6 h-6 rounded-full bg-white/10 text-neutral-400 flex items-center justify-center text-xs font-bold';
+    document.getElementById('setup-step-2').classList.add('text-neutral-500');
+    document.getElementById('setup-step-2').classList.remove('text-white');
+}
+
+async function finishSetup() {
+    // Upload photo first
+    if (setupPhotoFile) {
+        const formData = new FormData();
+        formData.append('image', setupPhotoFile);
+        const imgResp = await fetch('/api/auth/profile/image', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + AUTH.getToken() },
+            body: formData,
+        });
+        if (imgResp.ok) {
+            const imgData = await imgResp.json();
+            AUTH.setUser(imgData.user);
+            setAvatarDisplay(imgData.user.profile_image);
+        }
+    }
+    // Save phone & bio
+    const phone = document.getElementById('setup-phone').value.trim();
+    const bio = document.getElementById('setup-bio').value.trim();
+    if (phone || bio) {
+        const body = {};
+        if (phone) body.phone_number = phone;
+        if (bio) body.bio = bio;
+        const resp = await AUTH.fetch('/api/auth/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            AUTH.setUser(data.user);
+            updateDropdownCompletion(data.user.profile_complete || 0);
+        }
+    }
+    document.getElementById('profile-setup-modal').classList.add('hidden');
+    loadDashboard();
+}
+
+// Check if profile setup is needed (no profile image = first time)
+function checkProfileSetup() {
+    const u = AUTH.getUser();
+    if (!u.profile_image) {
+        document.getElementById('profile-setup-modal').classList.remove('hidden');
+    }
+}
+
+function logout() {
+    if (faceStream) { faceStream.getTracks().forEach(t => t.stop()); }
+    AUTH.fetch('/api/auth/logout', { method: 'POST' });
+    AUTH.clear();
+    window.location.href = '/login';
+}
+
+checkProfileSetup();
+loadDashboard();
+</script>
+{% endblock %}

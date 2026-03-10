@@ -1,0 +1,44 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Uploads (user-generated content)
+uploads/courses/*/
+uploads/profiles/*
+!uploads/courses/.gitkeep
+!uploads/profiles/.gitkeep
+
+# Screenshots (proctoring)
+screenshots/*
+!screenshots/.gitkeep
+
+# AI models (large files)
+ai_models/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log

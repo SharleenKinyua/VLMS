@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Analytics — AURA-EDU{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <h1 class="text-xl font-bold text-primary-700">AURA-EDU</h1>
+                    <span class="bg-orange-100 text-orange-700 text-xs font-medium px-2.5 py-0.5 rounded-full">Analytics</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="#" onclick="goBack()" class="text-sm text-gray-600 hover:text-primary-700">Dashboard</a>
+                    <span id="user-name" class="text-sm text-gray-600"></span>
+                    <button onclick="logout()" class="text-sm text-red-600 hover:text-red-700 font-medium">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-8">Analytics Dashboard</h2>
+
+        <!-- Admin Stats (visible to admin) -->
+        <div id="admin-stats" class="hidden mb-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
+                    <div class="text-2xl font-bold text-primary-700" id="stat-total-users">-</div>
+                    <div class="text-xs text-gray-500 mt-1">Total Users</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
+                    <div class="text-2xl font-bold text-accent-600" id="stat-total-students">-</div>
+                    <div class="text-xs text-gray-500 mt-1">Students</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
+                    <div class="text-2xl font-bold text-purple-600" id="stat-total-lecturers">-</div>
+                    <div class="text-xs text-gray-500 mt-1">Lecturers</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
+                    <div class="text-2xl font-bold text-blue-600" id="stat-total-courses">-</div>
+                    <div class="text-xs text-gray-500 mt-1">Courses</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
+                    <div class="text-2xl font-bold text-yellow-600" id="stat-total-exams">-</div>
+                    <div class="text-xs text-gray-500 mt-1">Exams</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
+                    <div class="text-2xl font-bold text-gray-700" id="stat-total-submissions">-</div>
+                    <div class="text-xs text-gray-500 mt-1">Submissions</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
+                    <div class="text-2xl font-bold text-red-600" id="stat-flagged">-</div>
+                    <div class="text-xs text-gray-500 mt-1">Flagged</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Course Performance Chart -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="font-semibold text-gray-800 mb-4">Course Performance</h3>
+                <div id="no-chart-data" class="text-center text-gray-400 py-8">
+                    Select a course to view performance data
+                </div>
+                <canvas id="performanceChart" class="hidden"></canvas>
+            </div>
+
+            <!-- Malpractice Overview -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="font-semibold text-gray-800 mb-4">Malpractice Reports</h3>
+                <div id="malpractice-content" class="text-center text-gray-400 py-8">
+                    No malpractice data available
+                </div>
+            </div>
+        </div>
+
+        <!-- Course Selector for Lecturer -->
+        <div id="course-selector" class="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="font-semibold text-gray-800 mb-4">Select Course for Detailed Analytics</h3>
+            <select id="course-select" onchange="loadCourseAnalytics(this.value)"
+                    class="w-full max-w-md px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+                <option value="">-- Select a course --</option>
+            </select>
+        </div>
+
+        <!-- Detailed Course Stats -->
+        <div id="course-stats" class="hidden mt-8">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="font-semibold text-gray-800 mb-4">Exam Statistics</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="text-left py-3 px-4 font-medium text-gray-600">Exam</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-600">Submissions</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-600">Average</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-600">Highest</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-600">Lowest</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-600">Pass Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exam-stats-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const user = AUTH.getUser();
+if (!user || (user.role !== 'lecturer' && user.role !== 'admin')) {
+    window.location.href = '/login';
+}
+document.getElementById('user-name').textContent = `${user.first_name} ${user.last_name}`;
+
+let performanceChart = null;
+
+async function loadAnalytics() {
+    // Admin overview
+    if (user.role === 'admin') {
+        document.getElementById('admin-stats').classList.remove('hidden');
+        const resp = await AUTH.fetch('/api/analytics/admin/overview');
+        if (resp.ok) {
+            const data = await resp.json();
+            document.getElementById('stat-total-users').textContent = data.total_users;
+            document.getElementById('stat-total-students').textContent = data.total_students;
+            document.getElementById('stat-total-lecturers').textContent = data.total_lecturers;
+            document.getElementById('stat-total-courses').textContent = data.total_courses;
+            document.getElementById('stat-total-exams').textContent = data.total_exams;
+            document.getElementById('stat-total-submissions').textContent = data.total_submissions;
+            document.getElementById('stat-flagged').textContent = data.flagged_submissions;
+        }
+    }
+
+    // Load courses for selector
+    if (user.role === 'lecturer') {
+        const resp = await AUTH.fetch('/api/lecturer/courses');
+        if (resp.ok) {
+            const data = await resp.json();
+            const select = document.getElementById('course-select');
+            data.items.forEach(c => {
+                select.innerHTML += `<option value="${c.id}">${c.code} — ${c.title}</option>`;
+            });
+        }
+    }
+}
+
+async function loadCourseAnalytics(courseId) {
+    if (!courseId) return;
+
+    const resp = await AUTH.fetch(`/api/analytics/course/${courseId}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+
+    // Show exam stats table
+    const tbody = document.getElementById('exam-stats-body');
+    document.getElementById('course-stats').classList.remove('hidden');
+
+    if (data.exam_stats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">No exam data yet.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.exam_stats.map(e => `
+        <tr class="hover:bg-gray-50">
+            <td class="py-3 px-4 text-gray-800 font-medium">${e.exam_title}</td>
+            <td class="py-3 px-4 text-gray-600">${e.total_submissions}</td>
+            <td class="py-3 px-4 text-gray-600">${e.average_score}</td>
+            <td class="py-3 px-4 text-accent-600 font-medium">${e.highest_score}</td>
+            <td class="py-3 px-4 text-red-600 font-medium">${e.lowest_score}</td>
+            <td class="py-3 px-4">
+                <span class="text-sm font-medium ${e.pass_rate >= 70 ? 'text-accent-600' : e.pass_rate >= 50 ? 'text-yellow-600' : 'text-red-600'}">${e.pass_rate}%</span>
+            </td>
+        </tr>
+    `).join('');
+
+    // Draw chart
+    const ctx = document.getElementById('performanceChart');
+    ctx.classList.remove('hidden');
+    document.getElementById('no-chart-data').classList.add('hidden');
+
+    if (performanceChart) performanceChart.destroy();
+    performanceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.exam_stats.map(e => e.exam_title),
+            datasets: [{
+                label: 'Average Score',
+                data: data.exam_stats.map(e => e.average_score),
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderRadius: 6,
+            }, {
+                label: 'Pass Rate %',
+                data: data.exam_stats.map(e => e.pass_rate),
+                backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                borderRadius: 6,
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { beginAtZero: true, max: 100 } },
+        },
+    });
+}
+
+function goBack() {
+    if (user.role === 'lecturer') window.location.href = '/lecturer/dashboard';
+    else if (user.role === 'admin') window.location.href = '/analytics';
+    else window.location.href = '/student/dashboard';
+}
+
+function logout() {
+    AUTH.fetch('/api/auth/logout', { method: 'POST' });
+    AUTH.clear();
+    window.location.href = '/login';
+}
+
+loadAnalytics();
+</script>
+{% endblock %}

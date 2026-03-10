@@ -1,0 +1,1164 @@
+{% extends "base.html" %}
+{% block title %}Lecturer Dashboard — AURA-EDU{% endblock %}
+
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; letter-spacing: -0.011em; }
+
+    /* ── Light glassmorphism nav ── */
+    .glass-nav-light {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .glass-nav-light.scrolled {
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    /* ── Nav link animations ── */
+    .nav-pill {
+        position: relative;
+        transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    .nav-pill::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 50%;
+        width: 0;
+        height: 2px;
+        background: #000;
+        border-radius: 2px;
+        transition: all 0.3s cubic-bezier(.4,0,.2,1);
+        transform: translateX(-50%);
+    }
+    .nav-pill:hover::after,
+    .nav-pill.active::after {
+        width: 60%;
+    }
+    .nav-pill.active {
+        color: #000 !important;
+    }
+    .nav-pill:hover {
+        transform: translateY(-1px);
+        color: #000 !important;
+    }
+
+    /* ── Dropdown slide-in ── */
+    .dropdown-panel {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.97);
+        pointer-events: none;
+        transition: all 0.25s cubic-bezier(.4,0,.2,1);
+    }
+    .dropdown-panel.open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+
+    /* ── Mobile slide-down ── */
+    .mobile-panel {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s cubic-bezier(.4,0,.2,1), opacity 0.25s ease;
+        opacity: 0;
+    }
+    .mobile-panel.open {
+        max-height: 400px;
+        opacity: 1;
+    }
+
+    /* ── Avatar ring ── */
+    .avatar-ring {
+        position: relative;
+    }
+    .avatar-ring::before {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 9999px;
+        background: linear-gradient(135deg, #000, #666, #000);
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .avatar-ring:hover::before {
+        opacity: 1;
+        animation: pulse-ring 2s ease-in-out infinite;
+    }
+    @keyframes pulse-ring {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 0.1; transform: scale(1.1); }
+    }
+
+    /* ── Logo shimmer (dark text variant) ── */
+    .logo-text {
+        background: linear-gradient(90deg, #000 0%, #666 40%, #000 60%, #666 100%);
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: logo-shimmer 6s ease-in-out infinite;
+    }
+    @keyframes logo-shimmer {
+        0% { background-position: 100% 50%; }
+        100% { background-position: -100% 50%; }
+    }
+
+    /* ── Nav fade-in entrance ── */
+    .nav-fade-in {
+        animation: fadeUp 0.5s cubic-bezier(.4,0,.2,1) both;
+    }
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Modern scrollbar (light) ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f5f5f5; }
+    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #aaa; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-[#f5f5f5]">
+    <!-- Navigation -->
+    <nav id="main-nav" class="glass-nav-light sticky top-0 z-40 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-8">
+                    <!-- Logo -->
+                    <a href="/lecturer" class="flex items-center space-x-2.5 group">
+                        <div class="w-9 h-9 rounded-xl bg-black flex items-center justify-center shadow-lg shadow-black/10 group-hover:shadow-black/20 transition-all duration-300 group-hover:scale-105">
+                            <svg class="w-[18px] h-[18px] text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4.09 12.36a1 1 0 00.78 1.64H11l-1 8 8.91-10.36a1 1 0 00-.78-1.64H13l1-8z"/></svg>
+                        </div>
+                        <div>
+                            <h1 class="logo-text text-xl font-extrabold tracking-tight">AURA-EDU</h1>
+                            <span class="text-[10px] font-semibold uppercase tracking-widest text-black/30 leading-none">Lecturer Portal</span>
+                        </div>
+                    </a>
+
+                    <!-- Desktop Nav Items -->
+                    <div class="hidden md:flex items-center space-x-1">
+                        <button onclick="closeCourseDetail();loadCourses()" id="nav-courses"
+                                class="nav-link nav-pill nav-fade-in active px-4 py-2 text-sm font-semibold rounded-xl text-black"
+                                style="animation-delay:0.05s">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+                                My Courses
+                            </span>
+                        </button>
+
+                        <!-- Tools Dropdown -->
+                        <div class="relative" id="tools-dropdown">
+                            <button onclick="toggleDropdown('tools')" id="nav-tools"
+                                    class="nav-link nav-pill nav-fade-in px-4 py-2 text-sm font-semibold rounded-xl text-black/40 hover:text-black"
+                                    style="animation-delay:0.1s">
+                                <span class="flex items-center gap-2">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                                    Tools
+                                    <svg class="w-3 h-3 transition-transform duration-200 dropdown-chevron" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                                </span>
+                            </button>
+                            <div id="dropdown-tools" class="dropdown-panel absolute left-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl shadow-black/10 border border-black/[0.06] py-2 z-50">
+                                <a href="/analytics" class="w-full text-left px-4 py-3 text-sm text-black/60 hover:text-black hover:bg-black/[0.03] flex items-center gap-3 transition-colors duration-150 rounded-lg mx-1" style="width:calc(100% - 8px)">
+                                    <div class="w-8 h-8 rounded-lg bg-black/[0.04] flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-black/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                                    </div>
+                                    <div><div class="font-medium text-black/80">Analytics</div><div class="text-xs text-black/30">Course performance data</div></div>
+                                </a>
+                                <button onclick="showCreateCourse();closeAllDropdowns()" class="w-full text-left px-4 py-3 text-sm text-black/60 hover:text-black hover:bg-black/[0.03] flex items-center gap-3 transition-colors duration-150 rounded-lg mx-1" style="width:calc(100% - 8px)">
+                                    <div class="w-8 h-8 rounded-lg bg-black/[0.04] flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-black/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                                    </div>
+                                    <div><div class="font-medium text-black/80">New Course</div><div class="text-xs text-black/30">Create a new course</div></div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right side -->
+                <div class="flex items-center space-x-3">
+                    <span id="user-name" class="text-sm font-medium text-black/40 hidden sm:inline"></span>
+
+                    <!-- Mobile menu toggle -->
+                    <button id="mobile-toggle" onclick="toggleMobileNav()" class="md:hidden p-2 rounded-xl text-black/40 hover:text-black hover:bg-black/[0.04] transition-all duration-200">
+                        <svg id="hamburger-icon" class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        <svg id="close-icon" class="w-5 h-5 hidden transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+
+                    <!-- User avatar dropdown -->
+                    <div class="relative" id="user-dropdown-wrap">
+                        <button onclick="toggleDropdown('user')" class="avatar-ring flex items-center gap-2 p-1 rounded-full hover:bg-black/[0.04] transition-all duration-200">
+                            <div class="w-9 h-9 rounded-full bg-black text-white flex items-center justify-center text-sm font-bold shadow-lg shadow-black/10" id="user-avatar">?</div>
+                            <svg class="w-3.5 h-3.5 text-black/30 hidden sm:block transition-transform duration-200 dropdown-chevron" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div id="dropdown-user" class="dropdown-panel absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/10 border border-black/[0.06] py-2 z-50">
+                            <div class="px-4 py-3 border-b border-black/[0.06]">
+                                <p class="text-sm font-semibold text-black" id="dropdown-name"></p>
+                                <p class="text-xs text-black/40 mt-0.5" id="dropdown-email"></p>
+                                <span class="inline-block mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-black/30 bg-black/[0.04] px-2 py-0.5 rounded-full">Lecturer</span>
+                            </div>
+                            <a href="/analytics" class="w-full flex items-center gap-3 text-left px-4 py-2.5 text-sm text-black/60 hover:text-black hover:bg-black/[0.03] transition-colors duration-150">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                                Analytics
+                            </a>
+                            <div class="my-1 border-t border-black/5"></div>
+                            <button onclick="logout()" class="w-full flex items-center gap-3 text-left px-4 py-2.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors duration-150">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Nav -->
+        <div id="mobile-nav" class="mobile-panel md:hidden border-t border-black/5 bg-white/95 backdrop-blur-lg px-4 py-0">
+            <div class="py-3 space-y-1">
+                <button onclick="closeCourseDetail();loadCourses();toggleMobileNav()" class="w-full text-left px-4 py-2.5 text-sm font-semibold rounded-xl text-black bg-black/[0.04] flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+                    My Courses
+                </button>
+                <a href="/analytics" class="w-full text-left px-4 py-2.5 text-sm font-medium rounded-xl text-black/40 hover:bg-black/[0.03] hover:text-black flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    Analytics
+                </a>
+                <button onclick="showCreateCourse();toggleMobileNav()" class="w-full text-left px-4 py-2.5 text-sm font-medium rounded-xl text-black/40 hover:bg-black/[0.03] hover:text-black flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                    New Course
+                </button>
+                <div class="my-1 border-t border-black/5"></div>
+                <button onclick="logout()" class="w-full text-left px-4 py-2.5 text-sm font-medium rounded-xl text-red-500 hover:bg-red-50 flex items-center gap-3 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Action Bar -->
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-2xl font-bold text-black">My Courses</h2>
+            <button onclick="showCreateCourse()"
+                    class="bg-black hover:bg-black/80 text-white font-medium px-5 py-2.5 rounded-xl transition-all">
+                + New Course
+            </button>
+        </div>
+
+        <!-- Courses Grid -->
+        <div id="courses-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="text-center text-black/30 col-span-full py-12">Loading courses...</div>
+        </div>
+
+        <!-- Course Detail Panel (hidden by default) -->
+        <div id="course-detail" class="hidden mt-8">
+            <div class="bg-white rounded-2xl border border-black/[0.06]">
+                <div class="p-6 border-b border-black/[0.06] flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-black" id="detail-title"></h3>
+                    <button onclick="closeCourseDetail()" class="w-8 h-8 rounded-lg bg-black/[0.04] hover:bg-black/[0.08] flex items-center justify-center text-black/30 hover:text-black transition-all">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Tabs -->
+                <div class="border-b border-black/[0.06]">
+                    <nav class="flex space-x-1 px-6 py-1">
+                        <button onclick="switchTab('lectures')" class="tab-btn py-2.5 px-4 text-sm font-semibold rounded-lg bg-black text-white transition-all" data-tab="lectures">Lectures</button>
+                        <button onclick="switchTab('materials')" class="tab-btn py-2.5 px-4 text-sm font-semibold rounded-lg text-black/40 hover:text-black/60 hover:bg-black/[0.04] transition-all" data-tab="materials">Materials</button>
+                        <button onclick="switchTab('exams')" class="tab-btn py-2.5 px-4 text-sm font-semibold rounded-lg text-black/40 hover:text-black/60 hover:bg-black/[0.04] transition-all" data-tab="exams">Exams</button>
+                        <button onclick="switchTab('students')" class="tab-btn py-2.5 px-4 text-sm font-semibold rounded-lg text-black/40 hover:text-black/60 hover:bg-black/[0.04] transition-all" data-tab="students">Students</button>
+                        <button onclick="switchTab('classes')" class="tab-btn py-2.5 px-4 text-sm font-semibold rounded-lg text-black/40 hover:text-black/60 hover:bg-black/[0.04] transition-all" data-tab="classes">Classes</button>
+                    </nav>
+                </div>
+
+                <div id="tab-content" class="p-6">
+                    <!-- Dynamic content loaded here -->
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Create Course Modal -->
+<div id="create-course-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-black">Create New Course</h3>
+            <button onclick="document.getElementById('create-course-modal').classList.add('hidden')" class="w-8 h-8 rounded-lg bg-black/[0.04] hover:bg-black/[0.08] flex items-center justify-center text-black/30 hover:text-black transition-all"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+        </div>
+        <form id="create-course-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-black/60 mb-1">Course Code</label>
+                <input type="text" id="course-code" required class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black" placeholder="CS101">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-black/60 mb-1">Title</label>
+                <input type="text" id="course-title" required class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black" placeholder="Introduction to Computer Science">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-black/60 mb-1">Description</label>
+                <textarea id="course-desc" rows="3" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-black/60 mb-1">Category</label>
+                <input type="text" id="course-category" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black" placeholder="Computer Science">
+            </div>
+            <div class="flex items-center space-x-2">
+                <input type="checkbox" id="course-published" checked class="w-4 h-4 accent-black rounded">
+                <label for="course-published" class="text-sm text-black/60">Publish immediately (students can see &amp; enroll)</label>
+            </div>
+            <button type="submit" class="w-full bg-black hover:bg-black/80 text-white font-semibold py-2.5 rounded-xl transition-all">Create Course</button>
+        </form>
+    </div>
+</div>
+
+<!-- Create Exam Modal -->
+<div id="create-exam-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-black">Generate Exam from Materials</h3>
+            <button onclick="document.getElementById('create-exam-modal').classList.add('hidden')" class="w-8 h-8 rounded-lg bg-black/[0.04] hover:bg-black/[0.08] flex items-center justify-center text-black/30 hover:text-black transition-all"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+        </div>
+        <div class="bg-black/[0.03] border border-black/[0.06] text-black/50 rounded-xl p-3 mb-4 text-sm">
+            Questions will be auto-generated from your course materials and lectures. You can review, edit, and approve them before publishing to students.
+        </div>
+        <form id="create-exam-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-black/60 mb-1">Exam Title</label>
+                <input type="text" id="exam-title" required class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Type</label>
+                    <select id="exam-type" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                        <option value="quiz">Quiz / CAT</option>
+                        <option value="midterm">Midterm</option>
+                        <option value="final">Final Exam</option>
+                        <option value="assignment">Assignment</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Number of Questions</label>
+                    <input type="number" id="exam-num-questions" value="10" min="1" max="50" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Difficulty Level</label>
+                    <select id="exam-difficulty" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                        <option value="remember">Remember</option>
+                        <option value="understand" selected>Understand</option>
+                        <option value="apply">Apply</option>
+                        <option value="analyze">Analyze</option>
+                        <option value="evaluate">Evaluate</option>
+                        <option value="create">Create</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Duration (min)</label>
+                    <input type="number" id="exam-duration" value="60" onchange="autoCalcEndTime()" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-black/60 mb-1">Question Types</label>
+                <div class="flex gap-4 mt-1">
+                    <label class="flex items-center gap-1.5 text-sm text-black/70"><input type="checkbox" value="mcq" checked class="question-type-cb w-4 h-4 accent-black rounded"> MCQ</label>
+                    <label class="flex items-center gap-1.5 text-sm text-black/70"><input type="checkbox" value="short_answer" checked class="question-type-cb w-4 h-4 accent-black rounded"> Short Answer</label>
+                    <label class="flex items-center gap-1.5 text-sm text-black/70"><input type="checkbox" value="essay" class="question-type-cb w-4 h-4 accent-black rounded"> Essay</label>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Passing Marks</label>
+                    <input type="number" id="exam-pass" value="50" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">&nbsp;</label>
+                    <div class="flex items-center space-x-2 py-2">
+                        <input type="checkbox" id="exam-proctored" checked class="w-4 h-4 accent-black rounded">
+                        <label for="exam-proctored" class="text-sm text-black/60">AI Proctored</label>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Start Time</label>
+                    <input type="datetime-local" id="exam-start" onchange="autoCalcEndTime()" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">End Time <span class="text-black/30 font-normal">(auto-calculated)</span></label>
+                    <input type="datetime-local" id="exam-end" readonly class="w-full px-4 py-2.5 border border-black/10 rounded-xl outline-none text-black/50 bg-black/[0.02] cursor-not-allowed">
+                </div>
+            </div>
+            <button type="submit" id="generate-btn" class="w-full bg-black hover:bg-black/80 text-white font-semibold py-2.5 rounded-xl transition-all">
+                Generate Exam from Materials
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Review Questions Modal -->
+<div id="review-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-6 border-b border-black/[0.06] flex justify-between items-center">
+            <div>
+                <h3 id="review-title" class="text-lg font-semibold text-black">Review Questions</h3>
+                <p class="text-sm text-black/40 mt-1">Edit or remove questions, then approve to publish</p>
+            </div>
+            <button onclick="document.getElementById('review-modal').classList.add('hidden')"
+                    class="w-8 h-8 rounded-lg bg-black/[0.04] hover:bg-black/[0.08] flex items-center justify-center text-black/30 hover:text-black transition-all"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+        </div>
+        <div id="review-questions" class="p-6 overflow-y-auto flex-1">
+            <div class="text-center text-black/30">Loading questions...</div>
+        </div>
+        <div class="p-4 border-t border-black/[0.06] flex justify-between items-center bg-black/[0.02]">
+            <span id="review-summary" class="text-sm text-black/50"></span>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('review-modal').classList.add('hidden')"
+                        class="px-4 py-2 text-sm text-black/40 hover:text-black font-medium transition-colors">Keep as Draft</button>
+                <button onclick="approveAndPublish()" id="approve-btn"
+                        class="px-6 py-2 text-sm bg-black hover:bg-black/80 text-white font-semibold rounded-xl transition-all">
+                    Approve &amp; Publish
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Submissions Review Modal -->
+<div id="submissions-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-6 border-b border-black/[0.06] flex justify-between items-center">
+            <div>
+                <h3 id="submissions-title" class="text-lg font-semibold text-black">Submissions</h3>
+                <p class="text-sm text-black/40 mt-1">Review student submissions and release grades when ready</p>
+            </div>
+            <button onclick="document.getElementById('submissions-modal').classList.add('hidden')"
+                    class="w-8 h-8 rounded-lg bg-black/[0.04] hover:bg-black/[0.08] flex items-center justify-center text-black/30 hover:text-black transition-all"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+        </div>
+        <div id="submissions-content" class="p-6 overflow-y-auto flex-1">
+            <div class="text-center text-black/30 py-8">Loading submissions...</div>
+        </div>
+        <div class="p-4 border-t border-black/[0.06] flex justify-between items-center bg-black/[0.02]">
+            <span id="submissions-summary" class="text-sm text-black/50"></span>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('submissions-modal').classList.add('hidden')"
+                        class="px-4 py-2 text-sm text-black/40 hover:text-black font-medium transition-colors">Close</button>
+                <button onclick="toggleReleaseGrades(submissionsExamId)" id="release-grades-btn"
+                        class="px-6 py-2 text-sm bg-black hover:bg-black/80 text-white font-semibold rounded-xl transition-all">
+                    Release Grades to Students
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const user = AUTH.getUser();
+if (!user || user.role !== 'lecturer') { window.location.href = '/login'; }
+document.getElementById('user-name').textContent = `${user.first_name} ${user.last_name}`;
+document.getElementById('user-avatar').textContent = (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
+document.getElementById('dropdown-name').textContent = `${user.first_name} ${user.last_name}`;
+document.getElementById('dropdown-email').textContent = user.email || '';
+
+// ═══════ NAV DROPDOWN MANAGEMENT ═══════
+function toggleMobileNav() {
+    const mobileNav = document.getElementById('mobile-nav');
+    const isOpen = mobileNav.classList.contains('open');
+    mobileNav.classList.toggle('open');
+    document.getElementById('hamburger-icon').classList.toggle('hidden', !isOpen);
+    document.getElementById('close-icon').classList.toggle('hidden', isOpen);
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-panel').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.dropdown-chevron').forEach(c => { c.style.transform = ''; });
+}
+
+function toggleDropdown(name) {
+    const dd = document.getElementById('dropdown-' + name);
+    const isOpen = dd.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        dd.classList.add('open');
+        const btn = dd.previousElementSibling || dd.closest('.relative').querySelector('button');
+        const chevron = btn ? btn.querySelector('.dropdown-chevron') : null;
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#tools-dropdown') && !e.target.closest('#user-dropdown-wrap')) {
+        closeAllDropdowns();
+    }
+});
+
+window.addEventListener('scroll', () => {
+    const nav = document.getElementById('main-nav');
+    if (window.scrollY > 10) nav.classList.add('scrolled');
+    else nav.classList.remove('scrolled');
+}, { passive: true });
+
+let currentCourseId = null;
+
+async function loadCourses() {
+    const resp = await AUTH.fetch('/api/lecturer/courses');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const grid = document.getElementById('courses-grid');
+
+    if (data.items.length === 0) {
+        grid.innerHTML = '<div class="text-center text-black/30 col-span-full py-12">No courses yet. Create your first course.</div>';
+        return;
+    }
+
+    grid.innerHTML = data.items.map(c => `
+        <div class="bg-white rounded-2xl border border-black/[0.06] p-6 hover:border-black/[0.12] transition-all group">
+            <div class="flex justify-between items-start mb-4">
+                <span class="bg-black/[0.04] text-black/60 text-xs font-semibold px-2.5 py-1 rounded-lg">${c.code}</span>
+                <button onclick="event.stopPropagation(); togglePublish(${c.id}, ${!c.is_published})"
+                        class="text-xs px-2.5 py-1 rounded-full font-medium transition-all ${c.is_published ? 'bg-black/5 text-black/60 hover:bg-red-50 hover:text-red-600' : 'bg-black/[0.03] text-black/30 hover:bg-black/5 hover:text-black/60'}">
+                    ${c.is_published ? 'Published \u2713' : 'Draft \u2014 Click to Publish'}
+                </button>
+            </div>
+            <div onclick="openCourseDetail(${c.id}, '${c.title.replace(/'/g, "\\'")}')"
+                 class="cursor-pointer">
+                <h3 class="font-semibold text-black group-hover:text-black/70 transition">${c.title}</h3>
+                <p class="text-sm text-black/40 mt-2 line-clamp-2">${c.description || 'No description'}</p>
+                <p class="text-xs text-black/25 mt-3">${c.category || 'Uncategorized'}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showCreateCourse() { document.getElementById('create-course-modal').classList.remove('hidden'); }
+
+document.getElementById('create-course-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const resp = await AUTH.fetch('/api/lecturer/courses', {
+        method: 'POST',
+        body: JSON.stringify({
+            code: document.getElementById('course-code').value,
+            title: document.getElementById('course-title').value,
+            description: document.getElementById('course-desc').value,
+            category: document.getElementById('course-category').value,
+            is_published: document.getElementById('course-published').checked,
+        }),
+    });
+    if (resp.ok) {
+        document.getElementById('create-course-modal').classList.add('hidden');
+        e.target.reset();
+        loadCourses();
+    }
+});
+
+async function openCourseDetail(courseId, title) {
+    currentCourseId = courseId;
+    document.getElementById('detail-title').textContent = title;
+    document.getElementById('course-detail').classList.remove('hidden');
+    switchTab('lectures');
+}
+
+function closeCourseDetail() {
+    document.getElementById('course-detail').classList.add('hidden');
+    currentCourseId = null;
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-black', 'text-white');
+        btn.classList.add('text-black/40', 'hover:text-black/60', 'hover:bg-black/[0.04]');
+    });
+    const activeBtn = document.querySelector(`[data-tab="${tab}"]`);
+    activeBtn.classList.remove('text-black/40', 'hover:text-black/60', 'hover:bg-black/[0.04]');
+    activeBtn.classList.add('bg-black', 'text-white');
+
+    if (tab === 'lectures') loadLectures();
+    else if (tab === 'materials') loadMaterials();
+    else if (tab === 'exams') loadExams();
+    else if (tab === 'students') loadStudents();
+    else if (tab === 'classes') loadClasses();
+}
+
+async function loadLectures() {
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/lectures`);
+    const data = await resp.json();
+    const container = document.getElementById('tab-content');
+
+    container.innerHTML = `
+        <div class="flex justify-between items-center mb-4">
+            <h4 class="font-medium text-black/60">Lectures</h4>
+            <button onclick="createLecture()" class="text-sm bg-black hover:bg-black/80 text-white px-3 py-1.5 rounded-xl transition-all">+ Add Lecture</button>
+        </div>
+        ${data.lectures.length === 0 ? '<p class="text-black/30 text-sm">No lectures yet.</p>'
+        : data.lectures.map(l => `
+            <div class="border border-black/[0.06] hover:border-black/[0.12] rounded-xl p-4 mb-3 transition-all">
+                <div class="flex justify-between">
+                    <h5 class="font-medium text-black">${l.title}</h5>
+                    <span class="text-xs font-medium ${l.is_published ? 'text-black/60' : 'text-black/30'}">${l.is_published ? 'Published' : 'Draft'}</span>
+                </div>
+                <p class="text-sm text-black/40 mt-1">${l.duration_minutes ? l.duration_minutes + ' min' : ''}</p>
+            </div>
+        `).join('')}
+    `;
+}
+
+async function createLecture() {
+    const title = prompt('Lecture title:');
+    if (!title) return;
+    await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/lectures`, {
+        method: 'POST',
+        body: JSON.stringify({ title, is_published: true }),
+    });
+    loadLectures();
+}
+
+async function loadMaterials() {
+    const container = document.getElementById('tab-content');
+    container.innerHTML = '<div class="text-center text-black/30">Loading materials...</div>';
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/materials`);
+    let materialsHtml = '';
+    if (resp.ok) {
+        const data = await resp.json();
+        if (data.materials && data.materials.length > 0) {
+            const typeIcons = { pdf: '\uD83D\uDCC4', video: '\uD83C\uDFA5', slide: '\uD83D\uDCCA', document: '\uD83D\uDCDD', other: '\uD83D\uDCCE' };
+            materialsHtml = data.materials.map(m => `
+                <div class="border border-black/[0.06] hover:border-black/[0.12] rounded-xl p-4 mb-3 transition-all">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${typeIcons[m.file_type] || typeIcons.other}</span>
+                            <div>
+                                <h5 class="font-medium text-black">${m.title}</h5>
+                                <p class="text-xs text-black/40">${m.file_type.toUpperCase()} \u2022 Uploaded ${new Date(m.uploaded_at).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${m.ai_summary
+                                ? '<span class="text-xs px-2 py-0.5 rounded-full bg-black/5 text-black/60 font-medium">AI Summarized</span>'
+                                : `<button onclick="summarizeMaterial(${m.id}, this)" class="text-xs px-2.5 py-1 rounded-lg bg-black/[0.04] text-black/60 hover:bg-black/[0.08] font-medium transition-all">Summarize</button>`}
+                            <a href="/uploads/${m.file_path}" target="_blank" rel="noopener"
+                               class="text-sm text-black/60 hover:text-black font-medium transition-colors">View</a>
+                        </div>
+                    </div>
+                    ${m.ai_summary ? `<p class="text-xs text-black/40 mt-2 line-clamp-2">${m.ai_summary.substring(0, 200)}${m.ai_summary.length > 200 ? '\u2026' : ''}</p>` : ''}
+                </div>
+            `).join('');
+        }
+    }
+    container.innerHTML = `
+        <div class="flex justify-between items-center mb-4">
+            <h4 class="font-medium text-black/60">Materials</h4>
+            <label class="text-sm bg-black hover:bg-black/80 text-white px-3 py-1.5 rounded-xl cursor-pointer transition-all">
+                + Upload File
+                <input type="file" class="hidden" onchange="uploadMaterial(this)">
+            </label>
+        </div>
+        ${materialsHtml || '<p class="text-black/30 text-sm">No materials uploaded yet.</p>'}
+    `;
+}
+
+async function summarizeMaterial(materialId, btn) {
+    btn.disabled = true; btn.textContent = 'Summarizing...';
+    const resp = await AUTH.fetch(`/api/lecturer/materials/${materialId}/summarize`, { method: 'POST' });
+    if (resp.ok) {
+        loadMaterials();
+    } else {
+        const d = await resp.json().catch(() => ({}));
+        alert(d.error || 'Failed to summarize material.');
+        btn.disabled = false; btn.textContent = 'Summarize';
+    }
+}
+
+async function uploadMaterial(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', file.name);
+
+    const resp = await fetch(`/api/lecturer/courses/${currentCourseId}/materials`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${AUTH.getToken()}` },
+        body: formData,
+    });
+    if (resp.ok) {
+        loadMaterials();
+    }
+}
+
+async function togglePublish(courseId, publish) {
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${courseId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ is_published: publish }),
+    });
+    if (resp.ok) {
+        loadCourses();
+    }
+}
+
+let reviewExamId = null;
+
+async function loadExams() {
+    const container = document.getElementById('tab-content');
+    container.innerHTML = `
+        <div class="flex justify-between items-center mb-4">
+            <h4 class="font-medium text-black">Exams</h4>
+            <button onclick="document.getElementById('create-exam-modal').classList.remove('hidden')" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
+        </div>
+        <p class="text-black/30 text-sm">Loading exams...</p>
+    `;
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/exams`);
+    if (!resp.ok) { container.innerHTML += '<p class="text-red-500 text-sm mt-2">Failed to load exams.</p>'; return; }
+    const data = await resp.json();
+    const exams = data.exams || [];
+    container.innerHTML = `
+        <div class="flex justify-between items-center mb-4">
+            <h4 class="font-medium text-black">Exams (${exams.length})</h4>
+            <button onclick="document.getElementById('create-exam-modal').classList.remove('hidden')" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
+        </div>
+        ${exams.length === 0 ? '<p class="text-black/30 text-sm">No exams yet. Click &quot;Generate Exam&quot; to auto-create from course materials.</p>' : `
+        <div class="space-y-3">
+            ${exams.map(ex => `
+            <div class="border border-black/[0.06] rounded-xl p-4 hover:border-black/20 transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h5 class="font-semibold text-black">${ex.title}</h5>
+                        <p class="text-xs text-black/40 mt-1">${ex.exam_type.toUpperCase()} &middot; ${ex.question_count} questions &middot; ${ex.total_marks} marks &middot; ${ex.duration_minutes} min</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs px-2 py-1 rounded-full font-medium ${ex.is_published ? 'bg-black/5 text-black/60' : 'bg-black/[0.04] text-black/50'}">${ex.is_published ? 'Published' : 'Draft'}</span>
+                        <button onclick="openReview(${ex.id}, '${ex.title.replace(/'/g, "\\'")}')" class="text-xs bg-black/5 text-black/70 px-3 py-1 rounded-lg hover:bg-black/10 font-medium">
+                            ${ex.is_published ? 'View' : 'Review & Approve'}
+                        </button>
+                    </div>
+                </div>
+                ${ex.submission_count > 0 ? `
+                <div class="mt-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-black/40">${ex.submission_count} submissions</span>
+                        ${ex.graded_count > 0 ? `<span class="text-xs text-black/60 font-medium">${ex.graded_count} graded</span>` : ''}
+                        ${ex.pending_count > 0 ? `<span class="text-xs text-black/40 font-medium">${ex.pending_count} pending review</span>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openSubmissions(${ex.id}, '${ex.title.replace(/'/g, "\\'")}')" class="text-xs bg-black/[0.04] text-black/60 px-3 py-1 rounded-lg hover:bg-black/[0.08] font-medium">
+                            View Submissions
+                        </button>
+                        ${ex.graded_count > 0 ? `
+                        <button onclick="toggleReleaseGrades(${ex.id})" class="text-xs px-3 py-1 rounded-lg font-medium ${ex.grades_released ? 'bg-black/5 text-black/60 hover:bg-red-50 hover:text-red-600' : 'bg-black/5 text-black/70 hover:bg-black/10'}">
+                            ${ex.grades_released ? '✓ Grades Released' : 'Release Grades'}
+                        </button>` : ''}
+                    </div>
+                </div>` : ''}
+            </div>
+            `).join('')}
+        </div>`}
+    `;
+}
+
+async function openReview(examId, title) {
+    reviewExamId = examId;
+    document.getElementById('review-title').textContent = 'Review: ' + title;
+    document.getElementById('review-modal').classList.remove('hidden');
+    await loadReviewQuestions(examId);
+}
+
+async function loadReviewQuestions(examId) {
+    const container = document.getElementById('review-questions');
+    container.innerHTML = '<div class="text-center text-black/30 py-8">Loading questions...</div>';
+    const resp = await AUTH.fetch(`/api/lecturer/exams/${examId}/questions`);
+    if (!resp.ok) { container.innerHTML = '<p class="text-red-500 text-sm">Failed to load questions.</p>'; return; }
+    const data = await resp.json();
+    const questions = data.questions || [];
+    document.getElementById('review-summary').textContent = `${questions.length} questions \u00b7 ${questions.reduce((s,q) => s + q.marks, 0)} total marks`;
+
+    if (questions.length === 0) {
+        container.innerHTML = '<p class="text-black/30 text-sm text-center py-8">No questions in this exam.</p>';
+        return;
+    }
+
+    container.innerHTML = questions.map((q, i) => `
+    <div class="border border-black/[0.06] rounded-xl p-4 mb-3" id="q-card-${q.id}">
+        <div class="flex justify-between items-start mb-2">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-black/[0.04] text-black/60">${q.question_type.toUpperCase()}</span>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-black/40">${q.marks} marks &middot; ${q.difficulty || 'N/A'}</span>
+                <button onclick="deleteQuestion(${q.id})" class="text-black/20 hover:text-red-500 text-sm transition-colors" title="Remove">&times;</button>
+            </div>
+        </div>
+        <div id="q-view-${q.id}">
+            <p class="text-sm text-black mb-2"><strong>Q${i+1}.</strong> ${q.question_text}</p>
+            ${q.question_type === 'mcq' && q.options ? `<div class="ml-4 text-xs text-black/50 space-y-1">${q.options.map((o, oi) => `<p>${String.fromCharCode(65+oi)}. ${o} ${o === q.correct_answer ? '<span class=\\"text-black/70 font-semibold\\">\u2713</span>' : ''}</p>`).join('')}</div>` : ''}
+            ${q.correct_answer && q.question_type !== 'mcq' ? `<p class="text-xs text-black/50 mt-1"><strong>Answer:</strong> ${q.correct_answer}</p>` : ''}
+            <button onclick="editQuestion(${q.id})" class="text-xs text-black/50 hover:text-black mt-2 font-medium transition-colors">Edit</button>
+        </div>
+        <div id="q-edit-${q.id}" class="hidden">
+            <textarea id="q-text-${q.id}" class="w-full text-sm border border-black/10 rounded-xl p-2 mb-2 text-black" rows="2">${q.question_text}</textarea>
+            ${q.question_type === 'mcq' ? `
+            <div class="space-y-1 mb-2">
+                ${(q.options || []).map((o, oi) => `<input type="text" value="${o}" class="q-opt-${q.id} w-full text-xs border border-black/[0.08] rounded-lg p-1.5 text-black" placeholder="Option ${String.fromCharCode(65+oi)}">`).join('')}
+            </div>
+            <input type="text" id="q-ans-${q.id}" value="${q.correct_answer || ''}" class="w-full text-xs border border-black/[0.08] rounded-lg p-1.5 mb-2 text-black" placeholder="Correct answer">
+            ` : `<input type="text" id="q-ans-${q.id}" value="${q.correct_answer || ''}" class="w-full text-xs border border-black/[0.08] rounded-lg p-1.5 mb-2 text-black" placeholder="Correct answer">`}
+            <input type="number" id="q-marks-${q.id}" value="${q.marks}" class="w-20 text-xs border border-black/[0.08] rounded-lg p-1.5 mb-2 text-black" placeholder="Marks">
+            <div class="flex gap-2">
+                <button onclick="saveQuestion(${q.id}, '${q.question_type}')" class="text-xs bg-black hover:bg-black/80 text-white px-3 py-1 rounded-lg transition-all">Save</button>
+                <button onclick="cancelEdit(${q.id})" class="text-xs text-black/40 hover:text-black px-3 py-1 transition-colors">Cancel</button>
+            </div>
+        </div>
+    </div>
+    `).join('');
+}
+
+function editQuestion(qId) {
+    document.getElementById('q-view-' + qId).classList.add('hidden');
+    document.getElementById('q-edit-' + qId).classList.remove('hidden');
+}
+function cancelEdit(qId) {
+    document.getElementById('q-edit-' + qId).classList.add('hidden');
+    document.getElementById('q-view-' + qId).classList.remove('hidden');
+}
+
+async function saveQuestion(qId, qType) {
+    const body = {
+        question_text: document.getElementById('q-text-' + qId).value,
+        correct_answer: document.getElementById('q-ans-' + qId)?.value || '',
+        marks: parseInt(document.getElementById('q-marks-' + qId).value) || 1,
+    };
+    if (qType === 'mcq') {
+        body.options = [...document.querySelectorAll('.q-opt-' + qId)].map(el => el.value).filter(v => v.trim());
+    }
+    const resp = await AUTH.fetch(`/api/lecturer/questions/${qId}`, { method: 'PUT', body: JSON.stringify(body) });
+    if (resp.ok) {
+        await loadReviewQuestions(reviewExamId);
+    } else {
+        alert('Failed to save question.');
+    }
+}
+
+async function deleteQuestion(qId) {
+    if (!confirm('Remove this question?')) return;
+    const resp = await AUTH.fetch(`/api/lecturer/questions/${qId}`, { method: 'DELETE' });
+    if (resp.ok) {
+        const card = document.getElementById('q-card-' + qId);
+        if (card) card.remove();
+        await loadReviewQuestions(reviewExamId);
+    }
+}
+
+async function approveAndPublish() {
+    if (!reviewExamId) return;
+    const btn = document.getElementById('approve-btn');
+    btn.disabled = true; btn.textContent = 'Publishing...';
+    const resp = await AUTH.fetch(`/api/lecturer/exams/${reviewExamId}/publish`, { method: 'POST' });
+    btn.disabled = false; btn.textContent = 'Approve & Publish';
+    if (resp.ok) {
+        document.getElementById('review-modal').classList.add('hidden');
+        loadExams();
+    } else {
+        const d = await resp.json().catch(() => ({}));
+        alert(d.error || 'Failed to publish exam.');
+    }
+}
+
+// ═══════ SUBMISSIONS & GRADE RELEASE ═══════
+let submissionsExamId = null;
+
+async function openSubmissions(examId, title) {
+    submissionsExamId = examId;
+    document.getElementById('submissions-title').textContent = 'Submissions: ' + title;
+    document.getElementById('submissions-modal').classList.remove('hidden');
+    await loadSubmissions(examId);
+}
+
+async function loadSubmissions(examId) {
+    const container = document.getElementById('submissions-content');
+    container.innerHTML = '<div class="text-center text-black/30 py-8">Loading submissions...</div>';
+
+    const resp = await AUTH.fetch(`/api/lecturer/exams/${examId}/submissions`);
+    if (!resp.ok) {
+        container.innerHTML = '<p class="text-red-500 text-sm">Failed to load submissions.</p>';
+        return;
+    }
+    const data = await resp.json();
+    const subs = data.submissions || [];
+
+    if (subs.length === 0) {
+        container.innerHTML = '<p class="text-black/30 text-sm text-center py-8">No submissions yet.</p>';
+        document.getElementById('submissions-summary').textContent = '0 submissions';
+        return;
+    }
+
+    const graded = subs.filter(s => s.is_graded);
+    const pending = subs.filter(s => !s.is_graded && s.status !== 'in_progress');
+    const inProgress = subs.filter(s => s.status === 'in_progress');
+
+    document.getElementById('submissions-summary').textContent =
+        `${subs.length} total · ${graded.length} graded · ${pending.length} pending`;
+
+    // Update release button state
+    const examResp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/exams`);
+    if (examResp.ok) {
+        const examData = await examResp.json();
+        const exam = (examData.exams || []).find(e => e.id === examId);
+        if (exam) {
+            const btn = document.getElementById('release-grades-btn');
+            if (exam.grades_released) {
+                btn.textContent = 'Hide Grades from Students';
+                btn.className = 'px-6 py-2 text-sm bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all';
+            } else {
+                btn.textContent = 'Release Grades to Students';
+                btn.className = 'px-6 py-2 text-sm bg-black hover:bg-black/80 text-white font-semibold rounded-xl transition-all';
+            }
+        }
+    }
+
+    container.innerHTML = `
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-black/[0.02] border-b border-black/[0.06]">
+                <tr>
+                    <th class="text-left py-3 px-4 font-medium text-black/50">Student</th>
+                    <th class="text-center py-3 px-4 font-medium text-black/50">Status</th>
+                    <th class="text-center py-3 px-4 font-medium text-black/50">Score</th>
+                    <th class="text-center py-3 px-4 font-medium text-black/50">Violations</th>
+                    <th class="text-left py-3 px-4 font-medium text-black/50">Submitted</th>
+                    <th class="text-center py-3 px-4 font-medium text-black/50">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-black/[0.04]">
+                ${subs.map(s => `
+                <tr class="hover:bg-black/[0.02]">
+                    <td class="py-3 px-4 font-medium text-black">${s.student_name}</td>
+                    <td class="py-3 px-4 text-center">
+                        ${s.status === 'graded'
+                            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-black/5 text-black/60 font-medium">Graded</span>'
+                            : s.status === 'submitted'
+                            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-black/[0.04] text-black/50 font-medium">Needs Review</span>'
+                            : '<span class="text-xs px-2 py-0.5 rounded-full bg-black/[0.03] text-black/40 font-medium">In Progress</span>'
+                        }
+                    </td>
+                    <td class="py-3 px-4 text-center font-semibold ${s.is_graded ? 'text-black' : 'text-black/30'}">${s.is_graded ? (s.total_score != null ? s.total_score : '-') : '—'}</td>
+                    <td class="py-3 px-4 text-center">
+                        ${s.violations_count > 0
+                            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-black/[0.04] text-black/50 font-medium">' + s.violations_count + ' flags</span>'
+                            : '<span class="text-xs text-black/30">None</span>'
+                        }
+                    </td>
+                    <td class="py-3 px-4 text-xs text-black/40">${s.submitted_at ? new Date(s.submitted_at).toLocaleString() : '—'}</td>
+                    <td class="py-3 px-4 text-center">
+                        ${s.status === 'submitted' && !s.is_graded
+                            ? '<span class="text-xs text-black/40 font-medium">Awaiting AI / manual grade</span>'
+                            : s.is_graded
+                            ? '<span class="text-xs text-black/60">✓ Reviewed</span>'
+                            : ''
+                        }
+                    </td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>`;
+}
+
+async function toggleReleaseGrades(examId) {
+    const resp = await AUTH.fetch(`/api/lecturer/exams/${examId}/release-grades`, { method: 'POST' });
+    if (resp.ok) {
+        const data = await resp.json();
+        alert(data.message);
+        loadExams();
+        if (document.getElementById('submissions-modal').classList.contains('hidden') === false) {
+            await loadSubmissions(examId);
+        }
+    } else {
+        const d = await resp.json().catch(() => ({}));
+        alert(d.error || 'Failed to toggle grades release.');
+    }
+}
+
+function autoCalcEndTime() {
+    const start = document.getElementById('exam-start').value;
+    const duration = parseInt(document.getElementById('exam-duration').value) || 60;
+    if (start) {
+        const endDate = new Date(new Date(start).getTime() + duration * 60000);
+        const pad = n => String(n).padStart(2, '0');
+        document.getElementById('exam-end').value =
+            `${endDate.getFullYear()}-${pad(endDate.getMonth()+1)}-${pad(endDate.getDate())}T${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+    }
+}
+
+document.getElementById('create-exam-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const types = [...document.querySelectorAll('.question-type-cb:checked')].map(cb => cb.value);
+    if (types.length === 0) { alert('Select at least one question type.'); return; }
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true; btn.textContent = 'Generating questions...';
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/exams/generate`, {
+        method: 'POST',
+        body: JSON.stringify({
+            title: document.getElementById('exam-title').value,
+            exam_type: document.getElementById('exam-type').value,
+            num_questions: parseInt(document.getElementById('exam-num-questions').value),
+            difficulty: document.getElementById('exam-difficulty').value,
+            question_types: types,
+            duration_minutes: parseInt(document.getElementById('exam-duration').value),
+            passing_marks: parseInt(document.getElementById('exam-pass').value),
+            start_time: document.getElementById('exam-start').value || null,
+            end_time: document.getElementById('exam-end').value || null,
+            is_proctored: document.getElementById('exam-proctored').checked,
+        }),
+    });
+    btn.disabled = false; btn.textContent = 'Generate Exam from Materials';
+    if (resp.ok) {
+        const data = await resp.json();
+        document.getElementById('create-exam-modal').classList.add('hidden');
+        e.target.reset();
+        openReview(data.exam.id, data.exam.title);
+        loadExams();
+    } else {
+        const d = await resp.json().catch(() => ({}));
+        alert(d.error || 'Failed to generate exam.');
+    }
+});
+
+async function loadStudents() {
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/students`);
+    const data = await resp.json();
+    const container = document.getElementById('tab-content');
+
+    if (data.students.length === 0) {
+        container.innerHTML = '<p class="text-black/30 text-sm">No students enrolled yet.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-black/[0.02]">
+                    <tr>
+                        <th class="text-left py-3 px-4 font-medium text-black/50">Name</th>
+                        <th class="text-left py-3 px-4 font-medium text-black/50">Email</th>
+                        <th class="text-left py-3 px-4 font-medium text-black/50">Status</th>
+                        <th class="text-left py-3 px-4 font-medium text-black/50">Progress</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-black/[0.04]">
+                    ${data.students.map(s => `
+                        <tr class="hover:bg-black/[0.02]">
+                            <td class="py-3 px-4 text-black">${s.first_name} ${s.last_name}</td>
+                            <td class="py-3 px-4 text-black/40">${s.email}</td>
+                            <td class="py-3 px-4"><span class="text-xs px-2 py-1 rounded-full ${s.enrollment_status === 'active' ? 'bg-black/5 text-black/60' : 'bg-black/[0.03] text-black/40'}">${s.enrollment_status}</span></td>
+                            <td class="py-3 px-4">
+                                <div class="w-full bg-black/10 rounded-full h-2"><div class="bg-black h-2 rounded-full" style="width:${s.progress || 0}%"></div></div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function logout() {
+    AUTH.fetch('/api/auth/logout', { method: 'POST' });
+    AUTH.clear();
+    window.location.href = '/login';
+}
+
+async function loadClasses() {
+    const container = document.getElementById('tab-content');
+    container.innerHTML = '<p class="text-black/30 text-sm">Loading classes...</p>';
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/classes`);
+    if (!resp.ok) { container.innerHTML = '<p class="text-red-500 text-sm">Failed to load classes.</p>'; return; }
+    const data = await resp.json();
+    const classes = data.classes || [];
+
+    const platformOptions = ['zoom', 'meet', 'teams', 'custom'].map(p => `<option value="${p}">${p.charAt(0).toUpperCase() + p.slice(1)}</option>`).join('');
+
+    container.innerHTML = `
+        <div class="mb-6 p-4 bg-black/[0.02] rounded-xl border border-black/[0.06]">
+            <h4 class="font-medium text-black mb-3">Schedule a Class</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input id="class-title" type="text" placeholder="Class title" class="border border-black/10 rounded-xl px-3 py-2 text-sm text-black focus:ring-1 focus:ring-black/20 outline-none">
+                <input id="class-link" type="url" placeholder="Meeting link (https://...)" class="border border-black/10 rounded-xl px-3 py-2 text-sm text-black focus:ring-1 focus:ring-black/20 outline-none">
+                <select id="class-platform" class="border border-black/10 rounded-xl px-3 py-2 text-sm text-black focus:ring-1 focus:ring-black/20 outline-none">${platformOptions}</select>
+                <input id="class-datetime" type="datetime-local" class="border border-black/10 rounded-xl px-3 py-2 text-sm text-black focus:ring-1 focus:ring-black/20 outline-none">
+                <input id="class-duration" type="number" placeholder="Duration (minutes)" value="60" min="1" class="border border-black/10 rounded-xl px-3 py-2 text-sm text-black focus:ring-1 focus:ring-black/20 outline-none">
+                <input id="class-description" type="text" placeholder="Description (optional)" class="border border-black/10 rounded-xl px-3 py-2 text-sm text-black focus:ring-1 focus:ring-black/20 outline-none">
+            </div>
+            <div class="flex items-center gap-3 mt-3">
+                <label class="flex items-center gap-2 text-sm text-black/50"><input type="checkbox" id="class-unlocked" class="accent-black"> Unlock immediately</label>
+                <button onclick="createClass()" class="ml-auto text-sm bg-black text-white px-4 py-2 rounded-xl hover:bg-black/80 transition-all">+ Schedule Class</button>
+            </div>
+        </div>
+        ${classes.length === 0 ? '<p class="text-black/30 text-sm">No classes scheduled yet.</p>' :
+        classes.map(c => {
+            const sched = c.scheduled_at ? new Date(c.scheduled_at) : null;
+            return `
+            <div class="border border-black/[0.06] rounded-xl p-4 mb-3">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h5 class="font-medium text-black">${c.title}</h5>
+                            <span class="text-xs px-2 py-0.5 rounded-full ${c.is_unlocked ? 'bg-black/5 text-black/60' : 'bg-black/[0.04] text-black/50'}">${c.is_unlocked ? 'Unlocked' : 'Locked'}</span>
+                            <span class="text-xs text-black/30">${c.platform}</span>
+                        </div>
+                        <p class="text-sm text-black/40 mt-1">${sched ? sched.toLocaleString() : 'No date'} \u2022 ${c.duration_minutes} min</p>
+                        ${c.description ? '<p class="text-sm text-black/30 mt-1">' + c.description + '</p>' : ''}
+                        <a href="${c.meeting_link}" target="_blank" rel="noopener noreferrer" class="text-xs text-black/50 hover:text-black hover:underline mt-1 inline-block transition-colors">${c.meeting_link}</a>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleClassLock(${c.id})" class="text-xs px-3 py-1.5 rounded-lg ${c.is_unlocked ? 'bg-black/[0.04] text-black/50 hover:bg-black/[0.08]' : 'bg-black/5 text-black/60 hover:bg-black/10'}">${c.is_unlocked ? 'Lock' : 'Unlock'}</button>
+                        <button onclick="deleteClass(${c.id})" class="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">Delete</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('')}
+    `;
+}
+
+async function createClass() {
+    const title = document.getElementById('class-title').value.trim();
+    const link = document.getElementById('class-link').value.trim();
+    const platform = document.getElementById('class-platform').value;
+    const datetime = document.getElementById('class-datetime').value;
+    const duration = parseInt(document.getElementById('class-duration').value) || 60;
+    const description = document.getElementById('class-description').value.trim();
+    const unlocked = document.getElementById('class-unlocked').checked;
+    if (!title || !link || !datetime) { alert('Title, meeting link, and date/time are required.'); return; }
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/classes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, meeting_link: link, platform, scheduled_at: datetime, duration_minutes: duration, description: description || null, is_unlocked: unlocked })
+    });
+    if (resp.ok) { loadClasses(); }
+    else { const d = await resp.json(); alert(d.error || 'Failed to create class.'); }
+}
+
+async function toggleClassLock(classId) {
+    const resp = await AUTH.fetch(`/api/lecturer/classes/${classId}/toggle-lock`, { method: 'POST' });
+    if (resp.ok) loadClasses();
+}
+
+async function deleteClass(classId) {
+    if (!confirm('Delete this class?')) return;
+    const resp = await AUTH.fetch(`/api/lecturer/classes/${classId}`, { method: 'DELETE' });
+    if (resp.ok) loadClasses();
+}
+
+loadCourses();
+</script>
+{% endblock %}
