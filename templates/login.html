@@ -1,56 +1,241 @@
 {% extends "base.html" %}
 {% block title %}Login — AURA-EDU{% endblock %}
 
+{% block head %}
+<style>
+    /* Background image + animated gradient overlay */
+    .auth-bg {
+        position: relative;
+        background: #0f172a;
+    }
+    .auth-bg::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat;
+        opacity: 0.25;
+        z-index: 0;
+    }
+
+
+    /* Floating orbs */
+    .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.4;
+        animation: floatOrb 8s ease-in-out infinite;
+    }
+    .orb-1 { width: 350px; height: 350px; background: #3b82f6; top: -80px; left: -80px; animation-delay: 0s; }
+    .orb-2 { width: 300px; height: 300px; background: #8b5cf6; bottom: -60px; right: -60px; animation-delay: 3s; }
+    .orb-3 { width: 200px; height: 200px; background: #06b6d4; top: 50%; left: 60%; animation-delay: 5s; }
+    @keyframes floatOrb {
+        0%, 100% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-30px) scale(1.05); }
+    }
+
+    /* Glassmorphism card */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.08);
+        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* Glass input */
+    .glass-input {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #fff;
+        transition: all 0.3s ease;
+    }
+    .glass-input::placeholder { color: rgba(255, 255, 255, 0.35); }
+    .glass-input:focus {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(99, 102, 241, 0.6);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 0 20px rgba(99, 102, 241, 0.1);
+    }
+
+    /* Slide-up animation */
+    .slide-up {
+        animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(40px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.25s; }
+    .delay-3 { animation-delay: 0.4s; }
+    .delay-4 { animation-delay: 0.55s; }
+
+    /* Fade-in for logo */
+    .fade-down {
+        animation: fadeDown 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
+    }
+    @keyframes fadeDown {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Glow button */
+    .glow-btn {
+        background: linear-gradient(135deg, #6366f1, #3b82f6);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    .glow-btn::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        background: linear-gradient(135deg, #6366f1, #3b82f6, #8b5cf6);
+        border-radius: inherit;
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        filter: blur(12px);
+    }
+    .glow-btn:hover::before { opacity: 1; }
+    .glow-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4); }
+    .glow-btn:active { transform: translateY(0); }
+
+    /* Shimmer on card edge */
+    .glass-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+        animation: shimmer 4s ease-in-out infinite;
+        pointer-events: none;
+    }
+    @keyframes shimmer {
+        0% { left: -100%; }
+        50% { left: 100%; }
+        100% { left: 100%; }
+    }
+
+    /* Particle dots */
+    .particle {
+        position: absolute;
+        width: 3px;
+        height: 3px;
+        background: rgba(255,255,255,0.3);
+        border-radius: 50%;
+        animation: drift linear infinite;
+    }
+    @keyframes drift {
+        from { transform: translateY(0) translateX(0); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        to { transform: translateY(-100vh) translateX(30px); opacity: 0; }
+    }
+</style>
+{% endblock %}
+
 {% block body %}
-<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 px-4">
-    <div class="w-full max-w-md">
+<div class="auth-bg min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+    <!-- Floating orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <!-- Particles -->
+    <div class="particle" style="left:10%;bottom:0;animation-duration:7s;animation-delay:0s"></div>
+    <div class="particle" style="left:25%;bottom:0;animation-duration:9s;animation-delay:1s"></div>
+    <div class="particle" style="left:45%;bottom:0;animation-duration:6s;animation-delay:2s"></div>
+    <div class="particle" style="left:65%;bottom:0;animation-duration:8s;animation-delay:0.5s"></div>
+    <div class="particle" style="left:80%;bottom:0;animation-duration:10s;animation-delay:3s"></div>
+    <div class="particle" style="left:90%;bottom:0;animation-duration:7s;animation-delay:1.5s"></div>
+
+    <div class="w-full max-w-md relative z-10">
         <!-- Logo -->
-        <div class="text-center mb-8">
+        <div class="text-center mb-8 fade-down">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-indigo-500/30 mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+            </div>
             <h1 class="text-4xl font-extrabold text-white tracking-tight">AURA-EDU</h1>
-            <p class="text-primary-200 mt-2 text-sm">Autonomous Responsive AI Education Platform</p>
+            <p class="text-indigo-200/70 mt-2 text-sm font-medium tracking-wide">Autonomous Responsive AI Education Platform</p>
         </div>
 
         <!-- Login Card -->
-        <div class="bg-white rounded-2xl shadow-2xl p-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-1">Welcome back</h2>
-            <p class="text-gray-500 text-sm mb-6">Sign in to your account</p>
+        <div class="glass-card rounded-3xl p-8 relative overflow-hidden">
+            <div class="slide-up delay-1">
+                <h2 class="text-2xl font-bold text-white mb-1">Welcome back</h2>
+                <p class="text-white/50 text-sm mb-6">Sign in to continue your journey</p>
+            </div>
 
-            <div id="login-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm"></div>
+            <div id="login-error" class="hidden bg-red-500/10 border border-red-400/30 text-red-300 px-4 py-3 rounded-xl mb-4 text-sm backdrop-blur-sm"></div>
 
             <form id="login-form" class="space-y-5">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="email" required
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                           placeholder="you@example.com">
+                <div class="slide-up delay-2">
+                    <label class="block text-sm font-medium text-white/70 mb-2">Email</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                            </svg>
+                        </span>
+                        <input type="email" id="email" required
+                               class="glass-input w-full pl-12 pr-4 py-3.5 rounded-xl outline-none"
+                               placeholder="you@example.com">
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input type="password" id="password" required
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                           placeholder="••••••••">
+                <div class="slide-up delay-3">
+                    <label class="block text-sm font-medium text-white/70 mb-2">Password</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                            </svg>
+                        </span>
+                        <input type="password" id="password" required
+                               class="glass-input w-full pl-12 pr-4 py-3.5 rounded-xl outline-none"
+                               placeholder="••••••••">
+                    </div>
                 </div>
 
-                <div class="flex justify-end">
-                    <a href="/forgot-password" class="text-sm text-primary-600 hover:text-primary-700 font-medium">Forgot password?</a>
+                <div class="flex justify-end slide-up delay-3">
+                    <a href="/forgot-password" class="text-sm text-indigo-300/80 hover:text-indigo-200 font-medium transition-colors duration-200">Forgot password?</a>
                 </div>
 
-                <button type="submit" id="login-btn"
-                        class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-lg hover:shadow-xl">
-                    Sign In
-                </button>
+                <div class="slide-up delay-4">
+                    <button type="submit" id="login-btn"
+                            class="glow-btn w-full text-white font-semibold py-3.5 rounded-xl transition duration-300 relative z-10">
+                        <span id="login-btn-text">Sign In</span>
+                        <svg id="login-spinner" class="hidden animate-spin mx-auto h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                    </button>
+                </div>
             </form>
 
-            <div class="mt-6 text-center">
-                <p class="text-sm text-gray-500">
+            <!-- Divider -->
+            <div class="slide-up delay-4 mt-8 mb-4 flex items-center gap-3">
+                <div class="flex-1 h-px bg-white/10"></div>
+                <span class="text-xs text-white/30 uppercase tracking-wider">or</span>
+                <div class="flex-1 h-px bg-white/10"></div>
+            </div>
+
+            <div class="text-center slide-up delay-4">
+                <p class="text-sm text-white/40">
                     Don't have an account?
-                    <a href="/register" class="text-primary-600 hover:text-primary-700 font-medium">Register</a>
+                    <a href="/register" class="text-indigo-300 hover:text-indigo-200 font-semibold transition-colors duration-200 ml-1">Create one</a>
                 </p>
             </div>
         </div>
 
-        <p class="text-center text-primary-200 text-xs mt-6">&copy; 2026 AURA-EDU. All rights reserved.</p>
+        <p class="text-center text-white/20 text-xs mt-8 tracking-wide">&copy; 2026 AURA-EDU. All rights reserved.</p>
     </div>
 </div>
 {% endblock %}
@@ -60,9 +245,12 @@
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('login-btn');
+    const btnText = document.getElementById('login-btn-text');
+    const spinner = document.getElementById('login-spinner');
     const errDiv = document.getElementById('login-error');
     btn.disabled = true;
-    btn.textContent = 'Signing in...';
+    btnText.classList.add('hidden');
+    spinner.classList.remove('hidden');
     errDiv.classList.add('hidden');
 
     try {
@@ -80,7 +268,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             errDiv.textContent = data.error || 'Login failed';
             errDiv.classList.remove('hidden');
             btn.disabled = false;
-            btn.textContent = 'Sign In';
+            btnText.classList.remove('hidden');
+            spinner.classList.add('hidden');
             return;
         }
 
@@ -97,7 +286,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         errDiv.textContent = 'Network error. Please try again.';
         errDiv.classList.remove('hidden');
         btn.disabled = false;
-        btn.textContent = 'Sign In';
+        btnText.classList.remove('hidden');
+        spinner.classList.add('hidden');
     }
 });
 </script>
