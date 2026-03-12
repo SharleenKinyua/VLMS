@@ -29,8 +29,10 @@ class FaceAuthenticator:
     def detect_faces(self, image):
         """Detect faces in an image. Returns list of bounding boxes."""
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # Equalize histogram to handle varying lighting
+        gray = cv2.equalizeHist(gray)
         faces = self.face_cascade.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
+            gray, scaleFactor=1.1, minNeighbors=3, minSize=(60, 60)
         )
         return faces
 
@@ -47,6 +49,9 @@ class FaceAuthenticator:
         x, y, w, h = faces[0]
         face_roi = gray[y:y+h, x:x+w]
         face_roi = cv2.resize(face_roi, (128, 128))
+        # Normalize lighting with CLAHE before encoding
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        face_roi = clahe.apply(face_roi)
         # Use Local Binary Pattern histogram as a simple encoding
         hist = cv2.calcHist([face_roi], [0], None, [256], [0, 256])
         cv2.normalize(hist, hist)
@@ -88,5 +93,6 @@ class FaceAuthenticator:
             cv2.HISTCMP_CORREL
         )
 
-        # Threshold for match (0.5 is relatively lenient)
-        return similarity > 0.5
+        # Threshold for match (0.3 — lenient for histogram-based comparison
+        # which is sensitive to lighting changes between registration and exam)
+        return similarity > 0.3

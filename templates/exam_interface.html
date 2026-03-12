@@ -217,7 +217,7 @@ function startTimer(seconds) {
         timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 
         if (remaining <= 300) timerEl.classList.replace('text-yellow-400', 'text-red-400');
-        if (remaining <= 0) { clearInterval(timerInterval); submitExam(); }
+        if (remaining <= 0) { clearInterval(timerInterval); submitExam(true); }
     }, 1000);
 }
 
@@ -265,8 +265,8 @@ function setupTabDetection() {
 }
 
 // ─── Submit Exam ───
-async function submitExam() {
-    if (!confirm('Are you sure you want to submit? You cannot change answers after submission.')) return;
+async function submitExam(autoSubmit = false) {
+    if (!autoSubmit && !confirm('Are you sure you want to submit? You cannot change answers after submission.')) return;
 
     clearInterval(timerInterval);
     clearInterval(proctorInterval);
