@@ -5,7 +5,7 @@ def init_database(app):
     """Initialize the database and create all tables."""
     with app.app_context():
         db.create_all()
-        print("[AURA-EDU] Database tables created successfully.")
+        print("[MindStack] Database tables created successfully.")
         _seed_admin(app)
 
 
@@ -19,7 +19,7 @@ def _seed_admin(app):
         if not admin:
             hashed = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt())
             admin = User(
-                email='admin@aura-edu.com',
+                email='admin@mindstack.com',
                 password_hash=hashed.decode('utf-8'),
                 first_name='System',
                 last_name='Admin',
@@ -28,4 +28,4 @@ def _seed_admin(app):
             )
             db.session.add(admin)
             db.session.commit()
-            print("[AURA-EDU] Default admin created: admin@aura-edu.com / admin123")
+            print("[MindStack] Default admin created: admin@mindstack.com / admin123")

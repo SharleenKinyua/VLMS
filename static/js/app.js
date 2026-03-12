@@ -1,1 +1,1 @@
-/* AURA-EDU Static JS — Shared utilities */
+/* MindStack Static JS — Shared utilities */
