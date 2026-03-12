@@ -6,15 +6,16 @@
     /* Background image + animated gradient overlay */
     .auth-bg {
         position: relative;
-        background: #0f172a;
+        background: #000000;
     }
     .auth-bg::after {
         content: '';
         position: absolute;
         inset: 0;
         background: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat;
-        opacity: 0.25;
+        opacity: 0.12;
         z-index: 0;
+        filter: grayscale(100%);
     }
 
 
@@ -26,9 +27,9 @@
         opacity: 0.4;
         animation: floatOrb 8s ease-in-out infinite;
     }
-    .orb-1 { width: 350px; height: 350px; background: #3b82f6; top: -80px; left: -80px; animation-delay: 0s; }
-    .orb-2 { width: 300px; height: 300px; background: #8b5cf6; bottom: -60px; right: -60px; animation-delay: 3s; }
-    .orb-3 { width: 200px; height: 200px; background: #06b6d4; top: 50%; left: 60%; animation-delay: 5s; }
+    .orb-1 { width: 350px; height: 350px; background: #ffffff; top: -80px; left: -80px; animation-delay: 0s; opacity: 0.08; }
+    .orb-2 { width: 300px; height: 300px; background: #a0a0a0; bottom: -60px; right: -60px; animation-delay: 3s; opacity: 0.1; }
+    .orb-3 { width: 200px; height: 200px; background: #d4d4d4; top: 50%; left: 60%; animation-delay: 5s; opacity: 0.06; }
     @keyframes floatOrb {
         0%, 100% { transform: translateY(0) scale(1); }
         50% { transform: translateY(-30px) scale(1.05); }
@@ -53,8 +54,8 @@
     .glass-input::placeholder { color: rgba(255, 255, 255, 0.35); }
     .glass-input:focus {
         background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(99, 102, 241, 0.6);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 0 20px rgba(99, 102, 241, 0.1);
+        border-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1), 0 0 20px rgba(255, 255, 255, 0.05);
     }
 
     /* Slide-up animation */
@@ -83,7 +84,8 @@
 
     /* Glow button */
     .glow-btn {
-        background: linear-gradient(135deg, #6366f1, #3b82f6);
+        background: #ffffff;
+        color: #000000;
         position: relative;
         overflow: hidden;
         transition: all 0.3s ease;
@@ -92,15 +94,15 @@
         content: '';
         position: absolute;
         inset: -2px;
-        background: linear-gradient(135deg, #6366f1, #3b82f6, #8b5cf6);
+        background: #ffffff;
         border-radius: inherit;
         z-index: -1;
         opacity: 0;
         transition: opacity 0.3s ease;
         filter: blur(12px);
     }
-    .glow-btn:hover::before { opacity: 1; }
-    .glow-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4); }
+    .glow-btn:hover::before { opacity: 0.6; }
+    .glow-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2); }
     .glow-btn:active { transform: translateY(0); }
 
     /* Shimmer on card edge */
@@ -163,13 +165,9 @@
     <div class="w-full max-w-md relative z-10">
         <!-- Logo -->
         <div class="text-center mb-8 fade-down">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-indigo-500/30 mb-4">
-                <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-            </div>
+           
             <h1 class="text-4xl font-extrabold text-white tracking-tight">AURA-EDU</h1>
-            <p class="text-indigo-200/70 mt-2 text-sm font-medium tracking-wide">Autonomous Responsive AI Education Platform</p>
+            <p class="text-white/50 mt-2 text-sm font-medium tracking-wide">Autonomous Responsive AI Education Platform</p>
         </div>
 
         <!-- Login Card -->
@@ -205,18 +203,27 @@
                             </svg>
                         </span>
                         <input type="password" id="password" required
-                               class="glass-input w-full pl-12 pr-4 py-3.5 rounded-xl outline-none"
+                               class="glass-input w-full pl-12 pr-12 py-3.5 rounded-xl outline-none"
                                placeholder="••••••••">
+                        <button type="button" title="Toggle password visibility" onclick="togglePassword('password', this)" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors duration-200 focus:outline-none">
+                            <svg class="w-5 h-5 eye-off" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12c1.292 4.338 5.31 7.5 10.066 7.5.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            </svg>
+                            <svg class="w-5 h-5 eye-on hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
                 <div class="flex justify-end slide-up delay-3">
-                    <a href="/forgot-password" class="text-sm text-indigo-300/80 hover:text-indigo-200 font-medium transition-colors duration-200">Forgot password?</a>
+                    <a href="/forgot-password" class="text-sm text-white/60 hover:text-white font-medium transition-colors duration-200">Forgot password?</a>
                 </div>
 
                 <div class="slide-up delay-4">
                     <button type="submit" id="login-btn"
-                            class="glow-btn w-full text-white font-semibold py-3.5 rounded-xl transition duration-300 relative z-10">
+                            class="glow-btn w-full text-black font-semibold py-3.5 rounded-xl transition duration-300 relative z-10">
                         <span id="login-btn-text">Sign In</span>
                         <svg id="login-spinner" class="hidden animate-spin mx-auto h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -236,7 +243,7 @@
             <div class="text-center slide-up delay-4">
                 <p class="text-sm text-white/40">
                     Don't have an account?
-                    <a href="/register" class="text-indigo-300 hover:text-indigo-200 font-semibold transition-colors duration-200 ml-1">Create one</a>
+                    <a href="/register" class="text-white/80 hover:text-white font-semibold transition-colors duration-200 ml-1">Create one</a>
                 </p>
             </div>
         </div>
@@ -248,6 +255,14 @@
 
 {% block scripts %}
 <script>
+function togglePassword(id, btn) {
+    const input = document.getElementById(id);
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    btn.querySelector('.eye-off').classList.toggle('hidden', isHidden);
+    btn.querySelector('.eye-on').classList.toggle('hidden', !isHidden);
+}
+
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('login-btn');
