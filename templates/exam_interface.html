@@ -34,7 +34,7 @@
             <div id="face-verify-screen" class="bg-gray-800 rounded-xl p-8 text-center">
                 <h2 class="text-xl font-semibold mb-4">Face Verification Required</h2>
                 <p class="text-gray-400 mb-6">Please allow camera access and look directly at the camera.</p>
-                <video id="verify-video" autoplay playsinline class="mx-auto rounded-lg mb-4 w-80 h-60 bg-black"></video>
+                <video id="verify-video" autoplay class="mx-auto rounded-lg mb-4 w-80 h-60 bg-black"></video>
                 <button onclick="verifyFace()" id="verify-btn"
                         class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition">
                     Verify Face & Start Exam
@@ -54,7 +54,7 @@
                     <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                     <span>Camera Active</span>
                 </div>
-                <video id="proctor-video" autoplay playsinline muted class="w-full rounded-lg bg-black aspect-video"></video>
+                <video id="proctor-video" autoplay muted class="w-full rounded-lg bg-black aspect-video"></video>
                 <canvas id="proctor-canvas" class="hidden"></canvas>
             </div>
 
@@ -90,8 +90,12 @@ let stream = null;
 async function initCamera() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        document.getElementById('verify-video').srcObject = stream;
-        document.getElementById('proctor-video').srcObject = stream;
+        const verifyVideo = document.getElementById('verify-video');
+        const proctorVideo = document.getElementById('proctor-video');
+        verifyVideo.setAttribute('playsinline', '');
+        proctorVideo.setAttribute('playsinline', '');
+        verifyVideo.srcObject = stream;
+        proctorVideo.srcObject = stream;
     } catch (err) {
         document.getElementById('verify-status').textContent = 'Camera access denied. Proctoring requires camera.';
     }
