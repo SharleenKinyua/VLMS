@@ -304,7 +304,7 @@
                                 Change Password
                             </button>
                             <div class="my-1 border-t border-white/5"></div>
-                            <button onclick="logout()" class="w-full flex items-center gap-3 text-left px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors duration-150">
+                            <button onclick="logout()" class="w-full flex items-center gap-3 text-left px-4 py-2.5 text-sm text-neutral-400 hover:text-white hover:bg-white/5 transition-colors duration-150">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                                 Logout
                             </button>
@@ -414,13 +414,44 @@
 
     <!-- ═══════ COURSES SECTION ═══════ -->
     <div id="section-courses" class="hidden">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-white">My Courses</h2>
-            <button onclick="showAvailableCourses()"
-                    class="bg-white hover:bg-neutral-200 text-black text-sm px-4 py-2 rounded-lg transition-all duration-200">+ Browse Courses</button>
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white">Courses</h2>
+            <p class="text-sm text-neutral-500 mt-1">Browse all offered units and register for courses</p>
         </div>
-        <div id="courses-full-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="text-center text-neutral-500 col-span-3">Loading...</div>
+
+        <!-- Tab switcher -->
+        <div class="flex gap-1 bg-white/5 p-1 rounded-xl mb-6 max-w-md">
+            <button id="courses-tab-all" onclick="switchCoursesTab('all')"
+                    class="flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg bg-white text-black transition-all duration-200">
+                All Units Offered
+            </button>
+            <button id="courses-tab-mine" onclick="switchCoursesTab('mine')"
+                    class="flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg text-neutral-400 hover:text-neutral-200 transition-all duration-200">
+                My Registered Courses
+            </button>
+        </div>
+
+        <!-- Search bar -->
+        <div class="mb-6">
+            <div class="relative max-w-md">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                <input id="courses-search" type="text" placeholder="Search courses by name or code..." oninput="filterCourses()"
+                       class="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/30">
+            </div>
+        </div>
+
+        <!-- All Courses grid -->
+        <div id="courses-tab-all-content">
+            <div id="all-courses-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="text-center text-neutral-500 col-span-3">Loading...</div>
+            </div>
+        </div>
+
+        <!-- My Courses grid -->
+        <div id="courses-tab-mine-content" class="hidden">
+            <div id="my-courses-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="text-center text-neutral-500 col-span-3">Loading...</div>
+            </div>
         </div>
     </div>
 
@@ -559,7 +590,7 @@
                         <textarea id="profile-bio" rows="3" placeholder="Tell us about yourself..." class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white/30 resize-none"></textarea>
                     </div>
                     <button onclick="saveProfile()" class="bg-white hover:bg-neutral-200 text-black text-sm px-6 py-2.5 rounded-lg font-medium transition-all duration-200">Save Changes</button>
-                    <span id="profile-save-status" class="ml-3 text-sm text-green-400 hidden">Saved!</span>
+                    <span id="profile-save-status" class="ml-3 text-sm text-white hidden">Saved!</span>
 
                     <!-- Share Contact Toggle -->
                     <div class="mt-6 pt-5 border-t border-white/5">
@@ -588,7 +619,7 @@
                         <div class="flex-1">
                             <div id="face-status" class="text-sm text-neutral-400 mb-3">
                                 <span class="inline-flex items-center gap-1.5">
-                                    <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                    <span class="w-2 h-2 rounded-full bg-neutral-500"></span>
                                     Not registered
                                 </span>
                             </div>
@@ -598,7 +629,7 @@
                                     Capture Face
                                 </span>
                             </button>
-                            <p id="face-error" class="text-xs text-red-400 mt-2 hidden"></p>
+                            <p id="face-error" class="text-xs text-neutral-400 mt-2 hidden"></p>
                         </div>
                     </div>
                     <!-- Hidden video/canvas for face capture -->
@@ -628,7 +659,7 @@
                         <button onclick="changePassword()" class="bg-white hover:bg-neutral-200 text-black text-sm px-6 py-2.5 rounded-lg font-medium transition-all duration-200">Update Password</button>
                         <span id="pw-status" class="text-sm hidden"></span>
                     </div>
-                    <p id="pw-error" class="text-xs text-red-400 mt-2 hidden"></p>
+                    <p id="pw-error" class="text-xs text-neutral-400 mt-2 hidden"></p>
                 </div>
             </div>
         </div>
@@ -710,7 +741,7 @@
                     <input type="file" id="setup-photo-input" title="Upload setup photo" accept="image/png,image/jpeg,image/jpg,image/webp" class="hidden" onchange="handleSetupPhoto(this)">
                     <p class="text-sm text-neutral-400 mb-1">Click to upload your photo</p>
                     <p class="text-xs text-neutral-500">PNG, JPG or WebP • This is required for exams</p>
-                    <p id="setup-photo-error" class="text-xs text-red-400 mt-2 hidden"></p>
+                    <p id="setup-photo-error" class="text-xs text-neutral-400 mt-2 hidden"></p>
                 </div>
                 <button id="setup-next-btn" onclick="setupNextStep()" disabled class="w-full mt-6 bg-white/10 text-neutral-500 px-4 py-2.5 rounded-lg cursor-not-allowed text-sm font-medium transition-all">
                     Continue
@@ -920,32 +951,125 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 
 // ═══════ COURSES PAGE ═══════
+let allCoursesData = [];
+let currentCoursesTab = 'all';
+
 async function loadCoursesPage() {
-    const container = document.getElementById('courses-full-list');
-    container.innerHTML = '<div class="text-center text-neutral-500 col-span-3">Loading courses...</div>';
-    const resp = await AUTH.fetch('/api/student/courses');
+    const allGrid = document.getElementById('all-courses-grid');
+    const myGrid = document.getElementById('my-courses-grid');
+    allGrid.innerHTML = '<div class="text-center text-neutral-500 col-span-3">Loading courses...</div>';
+    myGrid.innerHTML = '<div class="text-center text-neutral-500 col-span-3">Loading courses...</div>';
+
+    const resp = await AUTH.fetch('/api/student/courses/all');
     if (!resp.ok) return;
     const data = await resp.json();
-    if (data.items.length === 0) {
-        container.innerHTML = `<div class="col-span-3 text-center py-12">
-            <p class="text-neutral-500 mb-4">You haven't enrolled in any courses yet.</p>
-            <button onclick="showAvailableCourses()" class="bg-white hover:bg-neutral-200 text-black px-6 py-2 rounded-lg transition-all duration-200">Browse Courses</button>
-        </div>`;
-        return;
+    allCoursesData = data.items || [];
+    renderCoursesGrid();
+}
+
+function renderCoursesGrid() {
+    const search = (document.getElementById('courses-search')?.value || '').toLowerCase();
+    const allGrid = document.getElementById('all-courses-grid');
+    const myGrid = document.getElementById('my-courses-grid');
+
+    // Filter by search
+    const filtered = allCoursesData.filter(c =>
+        c.title.toLowerCase().includes(search) ||
+        c.code.toLowerCase().includes(search) ||
+        (c.category || '').toLowerCase().includes(search)
+    );
+
+    // All offered units
+    if (filtered.length === 0) {
+        allGrid.innerHTML = '<div class="col-span-3 text-center py-12 text-neutral-500">No courses found.</div>';
+    } else {
+        allGrid.innerHTML = filtered.map(c => renderCourseCard(c, 'all')).join('');
     }
-    container.innerHTML = data.items.map(c => `
-        <div class="dark-card hover:border-white/20 transition cursor-pointer overflow-hidden" onclick="viewCourse(${c.id})">
-            <div class="h-1 bg-white/20"></div>
+
+    // My registered courses only
+    const enrolled = filtered.filter(c => c.enrolled);
+    if (enrolled.length === 0) {
+        myGrid.innerHTML = `<div class="col-span-3 text-center py-12">
+            <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+            </div>
+            <p class="text-neutral-500 mb-2">You haven't registered for any courses yet.</p>
+            <p class="text-neutral-600 text-sm">Switch to "All Units Offered" to browse and register.</p>
+        </div>`;
+    } else {
+        myGrid.innerHTML = enrolled.map(c => renderCourseCard(c, 'mine')).join('');
+    }
+}
+
+function renderCourseCard(c, tab) {
+    const enrolledBadge = c.enrolled
+        ? '<span class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white font-medium">Registered</span>'
+        : '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400 font-medium">Not Registered</span>';
+
+    const actionBtn = c.enrolled
+        ? `<button onclick="event.stopPropagation();viewCourse(${c.id})" class="w-full bg-white/10 hover:bg-white/20 text-white text-sm py-2 rounded-lg transition-all duration-200 font-medium">View Course</button>`
+        : `<button onclick="event.stopPropagation();registerCourse(${c.id})" id="enroll-btn-${c.id}" class="w-full bg-white hover:bg-neutral-200 text-black text-sm py-2 rounded-lg transition-all duration-200 font-medium">Register</button>`;
+
+    return `
+        <div class="dark-card hover:border-white/20 transition overflow-hidden">
+            <div class="h-1 ${c.enrolled ? 'bg-white/40' : 'bg-white/20'}"></div>
             <div class="p-5">
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="text-xs bg-white/10 text-neutral-300 px-2 py-0.5 rounded-full font-medium">${c.code}</span>
-                    <span class="text-xs text-neutral-500">${c.category || 'General'}</span>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs bg-white/10 text-neutral-300 px-2 py-0.5 rounded-full font-medium">${c.code}</span>
+                        <span class="text-xs text-neutral-500">${c.category || 'General'}</span>
+                    </div>
+                    ${enrolledBadge}
                 </div>
                 <h3 class="font-semibold text-white mb-1">${c.title}</h3>
-                <p class="text-sm text-neutral-400 line-clamp-2">${c.description || 'No description'}</p>
+                <p class="text-sm text-neutral-400 line-clamp-2 mb-4">${c.description || 'No description available'}</p>
+                ${actionBtn}
             </div>
-        </div>
-    `).join('');
+        </div>`;
+}
+
+function switchCoursesTab(tab) {
+    currentCoursesTab = tab;
+    const allBtn = document.getElementById('courses-tab-all');
+    const mineBtn = document.getElementById('courses-tab-mine');
+    const allContent = document.getElementById('courses-tab-all-content');
+    const mineContent = document.getElementById('courses-tab-mine-content');
+    const activeClass = 'flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg bg-white text-black transition-all duration-200';
+    const inactiveClass = 'flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg text-neutral-400 hover:text-neutral-200 transition-all duration-200';
+
+    if (tab === 'all') {
+        allBtn.className = activeClass;
+        mineBtn.className = inactiveClass;
+        allContent.classList.remove('hidden');
+        mineContent.classList.add('hidden');
+    } else {
+        mineBtn.className = activeClass;
+        allBtn.className = inactiveClass;
+        mineContent.classList.remove('hidden');
+        allContent.classList.add('hidden');
+    }
+}
+
+function filterCourses() {
+    renderCoursesGrid();
+}
+
+async function registerCourse(courseId) {
+    const btn = document.getElementById('enroll-btn-' + courseId);
+    if (btn) { btn.textContent = 'Registering...'; btn.disabled = true; }
+    const resp = await AUTH.fetch(`/api/student/courses/${courseId}/enroll`, { method: 'POST' });
+    if (resp.ok) {
+        // Update local data
+        const course = allCoursesData.find(c => c.id === courseId);
+        if (course) course.enrolled = true;
+        renderCoursesGrid();
+        // Also refresh dashboard data
+        loadDashboard();
+    } else {
+        const err = await resp.json().catch(() => ({}));
+        alert(err.error || 'Failed to register for course.');
+        if (btn) { btn.textContent = 'Register'; btn.disabled = false; }
+    }
 }
 
 // ═══════ EXAMS PAGE ═══════
@@ -972,14 +1096,14 @@ async function loadExamsPage() {
         if (exams.length === 0) return '';
         return `<div class="mb-8">
             <h3 class="text-lg font-semibold text-neutral-300 mb-3 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-${color}-500"></span> ${title}
+                <span class="w-2 h-2 rounded-full bg-white"></span> ${title}
             </h3>
             <div class="space-y-3">${exams.map(e => renderExamCard(e)).join('')}</div>
         </div>`;
     };
-    html += renderGroup('Open Now', groups.open, 'green');
-    html += renderGroup('Upcoming', groups.upcoming, 'yellow');
-    html += renderGroup('Completed / Closed', groups.closed, 'gray');
+    html += renderGroup('Open Now', groups.open, 'white');
+    html += renderGroup('Upcoming', groups.upcoming, 'white');
+    html += renderGroup('Completed / Closed', groups.closed, 'white');
     container.innerHTML = html;
     startCountdowns();
 }
@@ -993,21 +1117,21 @@ function renderExamCard(e) {
     const isOpen = e.availability === 'open';
 
     let badge = '';
-    if (isAwaitingRelease) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">Awaiting Release</span>';
-    else if (done) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400">Completed</span>';
-    else if (inProgress) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">In Progress</span>';
-    else if (isUpcoming) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">Upcoming</span>';
+    if (isAwaitingRelease) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">Awaiting Release</span>';
+    else if (done) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">Completed</span>';
+    else if (inProgress) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">In Progress</span>';
+    else if (isUpcoming) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Upcoming</span>';
     else if (isClosed) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Closed</span>';
-    else badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/30 text-green-400">Open</span>';
+    else badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/15 text-white">Open</span>';
 
     let timeInfo = '';
-    if (isUpcoming && e.start_time) timeInfo = `<span class="exam-countdown text-xs text-yellow-400 font-medium" data-start="${e.start_time}" data-examid="${e.id}"></span>`;
+    if (isUpcoming && e.start_time) timeInfo = `<span class="exam-countdown text-xs text-neutral-400 font-medium" data-start="${e.start_time}" data-examid="${e.id}"></span>`;
     else if (isOpen && e.end_time) timeInfo = `<span class="text-xs text-neutral-400">Closes: ${new Date(e.end_time).toLocaleString()}</span>`;
 
     let btn = '';
-    if (isAwaitingRelease) btn = '<span class="text-sm font-medium text-blue-400">Results pending</span>';
-    else if (done) btn = `<span class="text-sm font-medium text-green-400">${e.total_score != null ? e.total_score + '/' + e.total_marks : 'Submitted'}</span>`;
-    else if (inProgress) btn = `<button onclick="startExam(${e.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded-lg transition-all duration-200">Continue</button>`;
+    if (isAwaitingRelease) btn = '<span class="text-sm font-medium text-neutral-300">Results pending</span>';
+    else if (done) btn = `<span class="text-sm font-medium text-white">${e.total_score != null ? e.total_score + '/' + e.total_marks : 'Submitted'}</span>`;
+    else if (inProgress) btn = `<button onclick="startExam(${e.id})" class="bg-white/20 hover:bg-white/30 text-white text-sm px-4 py-2 rounded-lg transition-all duration-200">Continue</button>`;
     else if (isOpen) btn = `<button onclick="startExam(${e.id})" class="bg-white hover:bg-neutral-200 text-black text-sm px-4 py-2 rounded-lg transition-all duration-200">Start Exam</button>`;
     else if (isUpcoming) btn = `<button disabled class="bg-white/10 text-neutral-500 text-sm px-4 py-2 rounded-lg cursor-not-allowed">Not Yet Open</button>`;
     else btn = `<button disabled class="bg-white/5 text-neutral-600 text-sm px-4 py-2 rounded-lg cursor-not-allowed">Closed</button>`;
@@ -1053,11 +1177,11 @@ async function loadGradesPage() {
     }
 
     function letterGrade(pct) {
-        if (pct >= 70) return { letter: 'A', color: 'text-green-400 bg-green-900/40' };
-        if (pct >= 60) return { letter: 'B', color: 'text-blue-400 bg-blue-900/40' };
-        if (pct >= 50) return { letter: 'C', color: 'text-yellow-400 bg-yellow-900/40' };
-        if (pct >= 40) return { letter: 'D', color: 'text-orange-400 bg-orange-900/40' };
-        return { letter: 'F', color: 'text-red-400 bg-red-900/40' };
+        if (pct >= 70) return { letter: 'A', color: 'text-white bg-white/20' };
+        if (pct >= 60) return { letter: 'B', color: 'text-neutral-200 bg-white/15' };
+        if (pct >= 50) return { letter: 'C', color: 'text-neutral-300 bg-white/10' };
+        if (pct >= 40) return { letter: 'D', color: 'text-neutral-400 bg-white/10' };
+        return { letter: 'F', color: 'text-neutral-500 bg-white/5' };
     }
 
     tbody.innerHTML = results.map(r => {
@@ -1065,18 +1189,18 @@ async function loadGradesPage() {
         const pct = r.total_marks && r.total_score != null ? Math.round((r.total_score / r.total_marks) * 100) : null;
         const g = pct != null ? letterGrade(pct) : { letter: '-', color: 'text-neutral-500 bg-white/10' };
         const statusBadge = isAwaiting
-            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">Awaiting Release</span>'
+            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">Awaiting Release</span>'
             : r.status === 'graded'
-            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400">Graded</span>'
+            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">Graded</span>'
             : r.status === 'submitted'
-            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">Pending</span>'
+            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Pending</span>'
             : '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">' + (r.status || '-') + '</span>';
         return `<tr class="hover:bg-white/5 transition-colors">
             <td class="py-3 px-4 text-white font-medium">${r.exam_title || 'Exam'}</td>
             <td class="py-3 px-4 text-neutral-400 text-xs">${r.course_title || '-'}</td>
             <td class="py-3 px-4 text-neutral-400 text-xs uppercase">${r.exam_type || '-'}</td>
-            <td class="py-3 px-4 text-center font-bold ${isAwaiting ? 'text-blue-400' : pct != null && pct >= 50 ? 'text-green-400' : 'text-red-400'}">${isAwaiting ? '—' : r.total_score != null ? r.total_score + '/' + r.total_marks : '-'}</td>
-            <td class="py-3 px-4 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-bold ${isAwaiting ? 'text-blue-400 bg-blue-900/40' : g.color}">${isAwaiting ? '?' : g.letter}</span></td>
+            <td class="py-3 px-4 text-center font-bold ${isAwaiting ? 'text-neutral-300' : pct != null && pct >= 50 ? 'text-white' : 'text-neutral-500'}">${isAwaiting ? '—' : r.total_score != null ? r.total_score + '/' + r.total_marks : '-'}</td>
+            <td class="py-3 px-4 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-bold ${isAwaiting ? 'text-neutral-300 bg-white/10' : g.color}">${isAwaiting ? '?' : g.letter}</span></td>
             <td class="py-3 px-4">${statusBadge}</td>
             <td class="py-3 px-4 text-neutral-500 text-xs">${r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : '-'}</td>
         </tr>`;
@@ -1140,7 +1264,7 @@ async function loadClassesPage() {
     const container = document.getElementById('classes-list');
     container.innerHTML = '<div class="text-center text-neutral-500">Loading classes...</div>';
     const resp = await AUTH.fetch('/api/student/classes');
-    if (!resp.ok) { container.innerHTML = '<div class="text-center text-red-400">Failed to load classes.</div>'; return; }
+    if (!resp.ok) { container.innerHTML = '<div class="text-center text-neutral-400">Failed to load classes.</div>'; return; }
     const data = await resp.json();
     const classes = data.classes || [];
     if (classes.length === 0) {
@@ -1168,8 +1292,8 @@ async function loadClassesPage() {
                     <div class="flex items-center gap-2 mb-1">
                         <h3 class="font-medium text-white">${c.title}</h3>
                         ${isLocked
-                            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">Locked</span>'
-                            : '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400">Available</span>'
+                            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Locked</span>'
+                            : '<span class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">Available</span>'
                         }
                     </div>
                     <p class="text-sm text-neutral-400">${c.course_title || ''} ${c.course_code ? '• ' + c.course_code : ''}</p>
@@ -1179,7 +1303,7 @@ async function loadClassesPage() {
                         ${c.duration_minutes ? '<span>⏱ ' + c.duration_minutes + ' min</span>' : ''}
                     </div>
                     ${c.description ? '<p class="text-sm text-neutral-500 mt-2">' + c.description + '</p>' : ''}
-                    ${isLocked && sched ? '<p class="mt-2"><span class="class-countdown text-xs text-yellow-400 font-medium" data-start="' + c.scheduled_at + '"></span></p>' : ''}
+                    ${isLocked && sched ? '<p class="mt-2"><span class="class-countdown text-xs text-neutral-400 font-medium" data-start="' + c.scheduled_at + '"></span></p>' : ''}
                 </div>
                 <div class="ml-4 flex-shrink-0">
                     ${isLocked
@@ -1193,10 +1317,10 @@ async function loadClassesPage() {
 
     let html = '';
     if (available.length > 0) {
-        html += '<div class="mb-8"><h3 class="text-lg font-semibold text-neutral-300 mb-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-green-500"></span> Available Now</h3><div class="space-y-3">' + available.map(renderClassCard).join('') + '</div></div>';
+        html += '<div class="mb-8"><h3 class="text-lg font-semibold text-neutral-300 mb-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-white"></span> Available Now</h3><div class="space-y-3">' + available.map(renderClassCard).join('') + '</div></div>';
     }
     if (upcoming.length > 0) {
-        html += '<div class="mb-8"><h3 class="text-lg font-semibold text-neutral-300 mb-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Upcoming</h3><div class="space-y-3">' + upcoming.map(renderClassCard).join('') + '</div></div>';
+        html += '<div class="mb-8"><h3 class="text-lg font-semibold text-neutral-300 mb-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-500"></span> Upcoming</h3><div class="space-y-3">' + upcoming.map(renderClassCard).join('') + '</div></div>';
     }
     container.innerHTML = html;
 
@@ -1280,7 +1404,7 @@ function renderCalendar() {
         const events = eventDays[d] || [];
         cells += `<div class="bg-[#111111] p-2 min-h-[60px] ${isToday ? 'ring-2 ring-inset ring-white' : ''}">
             <span class="text-xs font-medium ${isToday ? 'text-white font-bold' : 'text-neutral-400'}">${d}</span>
-            ${events.map(ev => `<div class="mt-1 text-xs px-1 py-0.5 rounded ${ev.availability === 'open' ? 'bg-green-900/40 text-green-400' : ev.availability === 'upcoming' ? 'bg-yellow-900/40 text-yellow-400' : 'bg-white/10 text-neutral-400'} truncate" title="${ev.title}">${ev.title}</div>`).join('')}
+            ${events.map(ev => `<div class="mt-1 text-xs px-1 py-0.5 rounded ${ev.availability === 'open' ? 'bg-white/20 text-white' : ev.availability === 'upcoming' ? 'bg-white/10 text-neutral-300' : 'bg-white/10 text-neutral-400'} truncate" title="${ev.title}">${ev.title}</div>`).join('')}
         </div>`;
     }
     grid.innerHTML = cells;
@@ -1358,17 +1482,17 @@ async function loadDashboard() {
                 // Status badge
                 let badge = '';
                 const isAwaitingRelease = e.submission_status === 'awaiting_release';
-                if (isAwaitingRelease) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">Awaiting Release</span>';
-                else if (done) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400">Completed</span>';
-                else if (inProgress) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">In Progress</span>';
-                else if (isUpcoming) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">Upcoming</span>';
+                if (isAwaitingRelease) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">Awaiting Release</span>';
+                else if (done) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">Completed</span>';
+                else if (inProgress) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">In Progress</span>';
+                else if (isUpcoming) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Upcoming</span>';
                 else if (isClosed) badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Closed</span>';
-                else badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-green-900/30 text-green-400">Open</span>';
+                else badge = '<span class="text-xs px-2 py-0.5 rounded-full bg-white/15 text-white">Open</span>';
 
                 // Time info
                 let timeInfo = '';
                 if (isUpcoming && e.start_time) {
-                    timeInfo = `<span class="exam-countdown text-xs text-yellow-400 font-medium" data-start="${e.start_time}" data-examid="${e.id}"></span>`;
+                    timeInfo = `<span class="exam-countdown text-xs text-neutral-400 font-medium" data-start="${e.start_time}" data-examid="${e.id}"></span>`;
                 } else if (isOpen && e.end_time) {
                     timeInfo = `<span class="text-xs text-neutral-400">Closes: ${new Date(e.end_time).toLocaleString()}</span>`;
                 } else if (isClosed && e.end_time) {
@@ -1378,11 +1502,11 @@ async function loadDashboard() {
                 // Button
                 let btn = '';
                 if (isAwaitingRelease) {
-                    btn = '<span class="text-sm font-medium text-blue-400">Results pending</span>';
+                    btn = '<span class="text-sm font-medium text-neutral-300">Results pending</span>';
                 } else if (done) {
-                    btn = `<span class="text-sm font-medium text-green-400">${e.total_score != null ? e.total_score + '/' + e.total_marks : 'Submitted'}</span>`;
+                    btn = `<span class="text-sm font-medium text-white">${e.total_score != null ? e.total_score + '/' + e.total_marks : 'Submitted'}</span>`;
                 } else if (inProgress) {
-                    btn = `<button onclick="startExam(${e.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded-lg transition-all duration-200">Continue</button>`;
+                    btn = `<button onclick="startExam(${e.id})" class="bg-white/20 hover:bg-white/30 text-white text-sm px-4 py-2 rounded-lg transition-all duration-200">Continue</button>`;
                 } else if (isOpen) {
                     btn = `<button onclick="startExam(${e.id})" class="bg-white hover:bg-neutral-200 text-black text-sm px-4 py-2 rounded-lg transition-all duration-200">Start Exam</button>`;
                 } else if (isUpcoming) {
@@ -1426,8 +1550,8 @@ async function loadDashboard() {
                     <div class="flex justify-between items-center">
                         <span class="text-sm font-medium text-neutral-300">${r.exam_title || 'Exam'}</span>
                         ${r.status === 'awaiting_release'
-                            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-400">Awaiting Release</span>'
-                            : `<span class="text-sm font-bold ${r.total_score >= (r.total_marks * 0.5) ? 'text-green-400' : 'text-red-400'}">
+                            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">Awaiting Release</span>'
+                            : `<span class="text-sm font-bold ${r.total_score >= (r.total_marks * 0.5) ? 'text-white' : 'text-neutral-500'}">
                             ${r.total_score != null ? r.total_score + '/' + (r.total_marks || '?') : 'Pending'}
                         </span>`
                         }
@@ -1461,8 +1585,8 @@ async function loadDashboard() {
                             <div class="flex items-center gap-2 mb-0.5">
                                 <h3 class="text-sm font-medium text-white truncate">${c.title}</h3>
                                 ${isLocked
-                                    ? '<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400 flex-shrink-0">Locked</span>'
-                                    : '<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-green-900/40 text-green-400 flex-shrink-0">Open</span>'
+                                    ? '<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-neutral-400 flex-shrink-0">Locked</span>'
+                                    : '<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 text-white flex-shrink-0">Open</span>'
                                 }
                             </div>
                             <p class="text-xs text-neutral-500 truncate">${c.course_title || ''}</p>
@@ -1651,7 +1775,7 @@ async function loadLectures() {
         bindLectureToggles();
     } else {
         const err = await resp.json();
-        container.innerHTML = `<div class="text-center text-red-500 py-8">${err.error || 'Failed to load lectures'}</div>`;
+        container.innerHTML = `<div class="text-center text-neutral-400 py-8">${err.error || 'Failed to load lectures'}</div>`;
     }
 }
 
@@ -1678,10 +1802,10 @@ function bindLectureToggles() {
 }
 
 const materialTypeConfig = {
-    pdf:      { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>', color: 'text-red-400 bg-red-500/10', label: 'PDF' },
-    video:    { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>', color: 'text-purple-400 bg-purple-500/10', label: 'Video' },
-    slide:    { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>', color: 'text-blue-400 bg-blue-500/10', label: 'Slides' },
-    document: { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>', color: 'text-green-400 bg-green-500/10', label: 'Document' },
+    pdf:      { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>', color: 'text-neutral-300 bg-white/10', label: 'PDF' },
+    video:    { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>', color: 'text-neutral-300 bg-white/10', label: 'Video' },
+    slide:    { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>', color: 'text-neutral-300 bg-white/10', label: 'Slides' },
+    document: { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>', color: 'text-neutral-300 bg-white/10', label: 'Document' },
     other:    { icon: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>', color: 'text-neutral-400 bg-white/10', label: 'File' }
 };
 
@@ -1725,7 +1849,7 @@ async function loadMaterials() {
         container.innerHTML = courseCache.materials;
     } else {
         const err = await resp.json();
-        container.innerHTML = `<div class="text-center text-red-500 py-8">${err.error || 'Failed to load materials'}</div>`;
+        container.innerHTML = `<div class="text-center text-neutral-400 py-8">${err.error || 'Failed to load materials'}</div>`;
     }
 }
 
@@ -1769,8 +1893,8 @@ async function loadProfilePage() {
     ];
 
     document.getElementById('profile-checklist').innerHTML = checks.map(c => `
-        <div class="flex items-center gap-2.5 text-sm ${c.done ? 'text-green-400' : 'text-neutral-500'}">
-            <span class="w-5 h-5 rounded-full ${c.done ? 'bg-green-900/40' : 'bg-white/5'} flex items-center justify-center text-xs">${c.done ? '✓' : '○'}</span>
+        <div class="flex items-center gap-2.5 text-sm ${c.done ? 'text-white' : 'text-neutral-500'}">
+            <span class="w-5 h-5 rounded-full ${c.done ? 'bg-white/20' : 'bg-white/5'} flex items-center justify-center text-xs">${c.done ? '✓' : '○'}</span>
             <span class="flex items-center gap-1.5">${c.icon} ${c.label}</span>
         </div>
     `).join('');
@@ -1786,11 +1910,11 @@ async function loadProfilePage() {
     const knob = document.getElementById('share-contact-knob');
     if (u.share_contact) {
         toggleBtn.classList.remove('bg-white/10');
-        toggleBtn.classList.add('bg-green-500');
+        toggleBtn.classList.add('bg-white');
         knob.classList.remove('left-0.5', 'bg-neutral-400');
         knob.classList.add('left-[22px]', 'bg-white');
     } else {
-        toggleBtn.classList.remove('bg-green-500');
+        toggleBtn.classList.remove('bg-white');
         toggleBtn.classList.add('bg-white/10');
         knob.classList.remove('left-[22px]', 'bg-white');
         knob.classList.add('left-0.5', 'bg-neutral-400');
@@ -1799,9 +1923,9 @@ async function loadProfilePage() {
     // Face status
     const faceStatus = document.getElementById('face-status');
     if (faceRegistered) {
-        faceStatus.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span> Registered</span>';
+        faceStatus.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-white"></span> Registered</span>';
     } else {
-        faceStatus.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Not registered</span>';
+        faceStatus.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-neutral-500"></span> Not registered</span>';
     }
 }
 
@@ -1898,7 +2022,7 @@ async function changePassword() {
     });
     if (resp.ok) {
         statusEl.textContent = 'Password updated successfully!';
-        statusEl.className = 'text-sm text-green-400';
+        statusEl.className = 'text-sm text-white';
         statusEl.classList.remove('hidden');
         document.getElementById('pw-current').value = '';
         document.getElementById('pw-new').value = '';
@@ -1968,7 +2092,7 @@ async function captureFace() {
             const data = await resp.json();
             AUTH.setUser(data.user);
             updateDropdownCompletion(data.user.profile_complete || 0);
-            document.getElementById('face-status').innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span>Registered</span>';
+            document.getElementById('face-status').innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-white"></span>Registered</span>';
             loadProfilePage();
         } else {
             const err = await resp.json().catch(() => ({}));
@@ -2003,7 +2127,7 @@ function handleSetupPhoto(input) {
 function setupNextStep() {
     document.getElementById('setup-page-1').classList.add('hidden');
     document.getElementById('setup-page-2').classList.remove('hidden');
-    document.getElementById('setup-step-1').querySelector('span').className = 'w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold';
+    document.getElementById('setup-step-1').querySelector('span').className = 'w-6 h-6 rounded-full bg-white text-black flex items-center justify-center text-xs font-bold';
     document.getElementById('setup-step-2').querySelector('span').className = 'w-6 h-6 rounded-full bg-white text-black flex items-center justify-center text-xs font-bold';
     document.getElementById('setup-step-2').classList.remove('text-neutral-500');
     document.getElementById('setup-step-2').classList.add('text-white');

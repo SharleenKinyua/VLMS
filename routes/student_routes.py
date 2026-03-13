@@ -56,6 +56,25 @@ def get_available_courses():
     return jsonify(paginate_query(courses, page))
 
 
+@student_bp.route('/api/student/courses/all', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_all_courses():
+    """Return all published courses with an enrolled flag for the current student."""
+    identity = get_identity()
+    enrolled_ids = set(
+        e.course_id for e in
+        Enrollment.query.filter_by(student_id=identity['id'], status='active').all()
+    )
+    courses = Course.query.filter(Course.is_published == True).order_by(Course.title).all()
+    items = []
+    for c in courses:
+        d = c.to_dict()
+        d['enrolled'] = c.id in enrolled_ids
+        items.append(d)
+    return jsonify({'items': items, 'total': len(items)})
+
+
 @student_bp.route('/api/student/courses/<int:course_id>/enroll', methods=['POST'])
 @jwt_required()
 @role_required('student')
