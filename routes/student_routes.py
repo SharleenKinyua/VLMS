@@ -277,6 +277,46 @@ def update_material_progress(material_id):
 
 # ──────────────── EXAM ROUTES ────────────────
 
+def _submission_remaining_seconds(submission, exam):
+    duration_seconds = int((exam.duration_minutes or 0) * 60)
+    if duration_seconds <= 0:
+        return 0
+    started_at = submission.started_at or datetime.utcnow()
+    elapsed = int((datetime.utcnow() - started_at).total_seconds())
+    remaining = duration_seconds - elapsed
+
+    if exam.end_time:
+        remaining_until_close = int((exam.end_time - datetime.now()).total_seconds())
+        remaining = min(remaining, remaining_until_close)
+
+    return max(0, remaining)
+
+
+def _finalize_submission(submission):
+    submission.submitted_at = datetime.utcnow()
+    submission.status = 'submitted'
+
+    total_score = 0
+    all_graded = True
+    answers = Answer.query.filter_by(submission_id=submission.id).all()
+    for ans in answers:
+        q = Question.query.get(ans.question_id)
+        if not q:
+            continue
+        if q.question_type == 'mcq':
+            if ans.score is not None:
+                total_score += ans.score
+        else:
+            all_graded = False
+
+    submission.total_score = total_score
+    if all_graded:
+        submission.is_graded = True
+        submission.status = 'graded'
+
+    db.session.commit()
+    return submission
+
 @student_bp.route('/api/student/exams', methods=['GET'])
 @jwt_required()
 @role_required('student')
@@ -345,16 +385,6 @@ def start_exam(exam_id):
     if not enrollment:
         return jsonify({'error': 'Not enrolled in this course'}), 403
 
-    # Check time window
-    now = datetime.now()
-    if exam.start_time and now < exam.start_time:
-        return jsonify({
-            'error': 'This exam has not opened yet.',
-            'opens_at': exam.start_time.isoformat()
-        }), 403
-    if exam.end_time and now > exam.end_time:
-        return jsonify({'error': 'This exam has already closed.'}), 403
-
     # Check existing submission
     existing = Submission.query.filter_by(
         exam_id=exam_id, student_id=identity['id']
@@ -362,20 +392,43 @@ def start_exam(exam_id):
     if existing and existing.status != 'in_progress':
         return jsonify({'error': 'Exam already submitted'}), 400
 
+    # Check time window for new attempts
+    now = datetime.now()
+    if not existing:
+        if exam.start_time and now < exam.start_time:
+            return jsonify({
+                'error': 'This exam has not opened yet.',
+                'opens_at': exam.start_time.isoformat()
+            }), 403
+        if exam.end_time and now > exam.end_time:
+            return jsonify({'error': 'This exam has already closed.'}), 403
+
     if not existing:
         existing = Submission(
             exam_id=exam_id,
             student_id=identity['id'],
             status='in_progress',
+            started_at=datetime.utcnow(),
         )
         db.session.add(existing)
         db.session.commit()
+    else:
+        remaining_seconds = _submission_remaining_seconds(existing, exam)
+        if remaining_seconds <= 0:
+            _finalize_submission(existing)
+            return jsonify({
+                'error': 'Time is up. Your exam was auto-submitted.',
+                'auto_submitted': True,
+                'submission': existing.to_dict(),
+            }), 403
 
     # Get questions (without correct answers)
     questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.order_index).all()
+    remaining_seconds = _submission_remaining_seconds(existing, exam)
     return jsonify({
         'submission_id': existing.id,
         'exam': exam.to_dict(),
+        'remaining_seconds': remaining_seconds,
         'questions': [q.to_dict(include_answer=False) for q in questions],
     })
 
@@ -390,6 +443,19 @@ def submit_answer(submission_id):
         return jsonify({'error': 'Submission not found'}), 404
     if submission.status != 'in_progress':
         return jsonify({'error': 'Exam already submitted'}), 400
+
+    exam = Exam.query.get(submission.exam_id)
+    if not exam:
+        return jsonify({'error': 'Exam not found'}), 404
+
+    remaining_seconds = _submission_remaining_seconds(submission, exam)
+    if remaining_seconds <= 0:
+        _finalize_submission(submission)
+        return jsonify({
+            'error': 'Time is up. Your exam was auto-submitted.',
+            'auto_submitted': True,
+            'submission': submission.to_dict(),
+        }), 403
 
     data = request.get_json()
     question_id = data.get('question_id')
@@ -429,27 +495,11 @@ def submit_exam(submission_id):
     if submission.status != 'in_progress':
         return jsonify({'error': 'Already submitted'}), 400
 
-    submission.submitted_at = datetime.utcnow()
-    submission.status = 'submitted'
+    exam = Exam.query.get(submission.exam_id)
+    if not exam:
+        return jsonify({'error': 'Exam not found'}), 404
 
-    # Auto-grade MCQ answers
-    total_score = 0
-    all_graded = True
-    answers = Answer.query.filter_by(submission_id=submission_id).all()
-    for ans in answers:
-        q = Question.query.get(ans.question_id)
-        if q.question_type == 'mcq':
-            if ans.score is not None:
-                total_score += ans.score
-        else:
-            all_graded = False  # Short answer / essay need manual or AI grading
-
-    submission.total_score = total_score
-    if all_graded:
-        submission.is_graded = True
-        submission.status = 'graded'
-
-    db.session.commit()
+    _finalize_submission(submission)
     return jsonify({
         'message': 'Exam submitted successfully',
         'submission': submission.to_dict(),
