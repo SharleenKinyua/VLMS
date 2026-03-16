@@ -11,6 +11,54 @@ from datetime import datetime, timedelta
 
 lecturer_bp = Blueprint('lecturer', __name__)
 
+ASSESSMENT_TOTAL_MARKS = {
+    'cat1': 30,
+    'cat2': 30,
+    'assignment': 30,
+    'main_exam': 70,
+}
+
+
+def map_assessment_type_to_exam_type(assessment_type):
+    mapping = {
+        'cat1': 'quiz',
+        'cat2': 'midterm',
+        'assignment': 'assignment',
+        'main_exam': 'final',
+    }
+    return mapping.get((assessment_type or '').lower(), 'quiz')
+
+
+def infer_assessment_type(exam):
+    description = (exam.description or '').strip()
+    marker = '[assessment:'
+    if description.lower().startswith(marker):
+        end = description.find(']')
+        if end > len(marker):
+            parsed = description[len(marker):end].strip().lower()
+            if parsed in ASSESSMENT_TOTAL_MARKS:
+                return parsed
+
+    if exam.exam_type == 'final':
+        return 'main_exam'
+    if exam.exam_type == 'midterm':
+        return 'cat2'
+    if exam.exam_type == 'assignment':
+        return 'assignment'
+    return 'cat1'
+
+
+def build_description_with_assessment_marker(description, assessment_type):
+    base = (description or '').strip()
+    marker = f'[assessment:{assessment_type}]'
+    if not base:
+        return marker
+    if base.lower().startswith('[assessment:'):
+        end = base.find(']')
+        if end != -1:
+            base = base[end + 1:].strip()
+    return f'{marker} {base}'.strip()
+
 
 # ──────────────── PAGE ROUTES ────────────────
 
@@ -304,6 +352,12 @@ def create_exam(course_id):
         return jsonify({'error': 'Course not found'}), 404
 
     data = request.get_json()
+    assessment_type = (data.get('assessment_type') or '').lower()
+    if assessment_type not in ASSESSMENT_TOTAL_MARKS:
+        assessment_type = 'cat1'
+
+    mapped_exam_type = map_assessment_type_to_exam_type(assessment_type)
+    total_marks = data.get('total_marks', ASSESSMENT_TOTAL_MARKS[assessment_type])
     duration = data.get('duration_minutes', 60)
     start = datetime.fromisoformat(data['start_time']) if data.get('start_time') else None
     end = datetime.fromisoformat(data['end_time']) if data.get('end_time') else None
@@ -314,10 +368,10 @@ def create_exam(course_id):
     exam = Exam(
         course_id=course_id,
         title=data.get('title', 'Untitled Exam'),
-        description=data.get('description', ''),
-        exam_type=data.get('exam_type', 'quiz'),
+        description=build_description_with_assessment_marker(data.get('description', ''), assessment_type),
+        exam_type=mapped_exam_type,
         duration_minutes=duration,
-        total_marks=data.get('total_marks', 100),
+        total_marks=total_marks,
         passing_marks=data.get('passing_marks', 50),
         start_time=start,
         end_time=end,
@@ -448,6 +502,7 @@ def get_exams(course_id):
     exam_list = []
     for exam in exams:
         ed = exam.to_dict()
+        ed['assessment_type'] = infer_assessment_type(exam)
         ed['question_count'] = Question.query.filter_by(exam_id=exam.id).count()
         ed['submission_count'] = Submission.query.filter_by(exam_id=exam.id).count()
         ed['graded_count'] = Submission.query.filter_by(exam_id=exam.id, is_graded=True).count()
@@ -470,7 +525,10 @@ def generate_exam_from_materials(course_id):
     num_questions = data.get('num_questions', 10)
     difficulty = data.get('difficulty', 'understand')
     exam_title = data.get('title', f'{course.title} — Auto-Generated Exam')
-    exam_type = data.get('exam_type', 'quiz')
+    assessment_type = (data.get('assessment_type') or '').lower()
+    if assessment_type not in ASSESSMENT_TOTAL_MARKS:
+        assessment_type = 'cat1'
+    exam_type = map_assessment_type_to_exam_type(assessment_type)
     question_types = data.get('question_types', ['mcq', 'short_answer'])
 
     # Gather text from all course materials
@@ -545,6 +603,15 @@ def generate_exam_from_materials(course_id):
     if not generated:
         return jsonify({'error': 'Could not generate questions from the available content.'}), 400
 
+    target_total_marks = int(data.get('total_marks', ASSESSMENT_TOTAL_MARKS[assessment_type]))
+    target_total_marks = max(1, target_total_marks)
+    question_count = len(generated)
+    base_marks = target_total_marks // question_count
+    remainder_marks = target_total_marks % question_count
+
+    for index, item in enumerate(generated):
+        item['marks'] = base_marks + (1 if index < remainder_marks else 0)
+
     # Create exam in draft (unpublished) state
     gen_duration = data.get('duration_minutes', 60)
     gen_start = datetime.fromisoformat(data['start_time']) if data.get('start_time') else None
@@ -555,10 +622,13 @@ def generate_exam_from_materials(course_id):
     exam = Exam(
         course_id=course_id,
         title=exam_title,
-        description=f'Auto-generated from course materials. {len(generated)} questions pending review.',
+        description=build_description_with_assessment_marker(
+            f'Auto-generated from course materials. {len(generated)} questions pending review.',
+            assessment_type,
+        ),
         exam_type=exam_type,
         duration_minutes=gen_duration,
-        total_marks=sum(q.get('marks', 1) for q in generated),
+        total_marks=target_total_marks,
         passing_marks=data.get('passing_marks', 50),
         start_time=gen_start,
         end_time=gen_end,

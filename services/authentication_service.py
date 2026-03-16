@@ -40,18 +40,60 @@ class AuthenticationService:
     @staticmethod
     def login(email, password):
         """Authenticate user and return tokens."""
-        user = User.query.filter_by(email=email, is_active=True).first()
-        if not user or not check_password(password, user.password_hash):
+        user_row = db.session.query(
+            User.id,
+            User.email,
+            User.password_hash,
+            User.first_name,
+            User.last_name,
+            User.role,
+            User.profile_image,
+            User.phone_number,
+            User.bio,
+            User.is_active,
+            User.share_contact,
+            User.created_at,
+            User.face_encoding.isnot(None).label('face_registered'),
+        ).filter(
+            User.email == email,
+            User.is_active == True,
+        ).first()
+
+        if not user_row or not check_password(password, user_row.password_hash):
             return None, 'Invalid email or password.'
 
-        claims = {'email': user.email, 'role': user.role}
-        access_token = create_access_token(identity=str(user.id), additional_claims=claims)
-        refresh_token = create_refresh_token(identity=str(user.id), additional_claims=claims)
+        profile_steps = [
+            bool(user_row.profile_image),
+            bool(user_row.phone_number),
+            bool(user_row.bio),
+            bool(user_row.face_registered),
+        ]
+        profile_complete = int(sum(profile_steps) / len(profile_steps) * 100)
+
+        user_payload = {
+            'id': user_row.id,
+            'email': user_row.email,
+            'first_name': user_row.first_name,
+            'last_name': user_row.last_name,
+            'role': user_row.role,
+            'profile_image': user_row.profile_image,
+            'phone_number': user_row.phone_number,
+            'bio': user_row.bio,
+            'is_active': user_row.is_active,
+            'share_contact': user_row.share_contact,
+            'profile_complete': profile_complete,
+            'face_registered': bool(user_row.face_registered),
+            'created_at': user_row.created_at.isoformat() if user_row.created_at else None,
+        }
+
+        claims = {'email': user_row.email, 'role': user_row.role}
+        access_token = create_access_token(identity=str(user_row.id), additional_claims=claims)
+        refresh_token = create_refresh_token(identity=str(user_row.id), additional_claims=claims)
 
         return {
             'access_token': access_token,
             'refresh_token': refresh_token,
-            'user': user.to_dict(),
+            'user': user_payload,
         }, None
 
     @staticmethod

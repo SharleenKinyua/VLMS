@@ -346,15 +346,15 @@
                 <div>
                     <label class="block text-sm font-medium text-black/60 mb-1">Type</label>
                     <select id="exam-type" title="Exam type" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
-                        <option value="quiz">Quiz / CAT</option>
-                        <option value="midterm">Midterm</option>
-                        <option value="final">Final Exam</option>
+                        <option value="cat1">CAT 1</option>
+                        <option value="cat2">CAT 2</option>
                         <option value="assignment">Assignment</option>
+                        <option value="main_exam">Main Exam</option>
                     </select>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-black/60 mb-1">Number of Questions</label>
                     <input type="number" id="exam-num-questions" value="10" min="1" max="50" placeholder="10" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
@@ -378,6 +378,18 @@
                     <label class="block text-sm font-medium text-black/60 mb-1">Passing Marks</label>
                     <input type="number" id="exam-pass" value="50" placeholder="50" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Total Marks</label>
+                    <input type="number" id="exam-total-marks" value="30" readonly title="Total marks" placeholder="30" class="w-full px-4 py-2.5 border border-black/10 rounded-xl outline-none text-black/60 bg-black/[0.02] cursor-not-allowed">
+                </div>
+            </div>
+
+            <div class="border border-black/[0.06] rounded-xl p-4 bg-black/[0.01]">
+                <p class="text-sm font-medium text-black/70 mb-1">Marks Distribution Policy</p>
+                <p class="text-xs text-black/50 leading-relaxed">
+                    CAT 1 = 30 marks, CAT 2 = 30 marks, Main Exam = 70 marks, Assignment = practice marks (not part of CAT + Main weighted total).
+                    Final weighted exam component is based on ((CAT 1 + CAT 2) ÷ 2) + Main Exam.
+                </p>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -771,8 +783,8 @@ async function loadCourses() {
     }
 
     const totalExams = exams.length;
-    const totalCats = exams.filter(exam => exam.exam_type === 'quiz').length;
-    const catsDone = exams.filter(exam => exam.exam_type === 'quiz' && (exam.submission_count || 0) > 0).length;
+    const totalCats = exams.filter(exam => ['cat1', 'cat2', 'quiz', 'midterm'].includes(exam.assessment_type || exam.exam_type)).length;
+    const catsDone = exams.filter(exam => ['cat1', 'cat2', 'quiz', 'midterm'].includes(exam.assessment_type || exam.exam_type) && (exam.submission_count || 0) > 0).length;
     const examsDone = exams.filter(exam => (exam.submission_count || 0) > 0).length;
     const publishedExams = exams.filter(exam => exam.is_published).length;
     const totalSubmissions = exams.reduce((sum, exam) => sum + (exam.submission_count || 0), 0);
@@ -1153,6 +1165,41 @@ async function togglePublish(courseId, publish) {
 
 let reviewExamId = null;
 
+const ASSESSMENT_TOTALS = {
+    cat1: 30,
+    cat2: 30,
+    assignment: 30,
+    main_exam: 70,
+};
+
+const ASSESSMENT_LABELS = {
+    cat1: 'CAT 1',
+    cat2: 'CAT 2',
+    assignment: 'Assignment',
+    main_exam: 'Main Exam',
+};
+
+function formatAssessmentType(exam) {
+    const type = exam.assessment_type || exam.exam_type;
+    if (ASSESSMENT_LABELS[type]) return ASSESSMENT_LABELS[type];
+    if (type === 'quiz') return 'CAT';
+    if (type === 'midterm') return 'CAT 2';
+    if (type === 'final') return 'Main Exam';
+    return String(type || 'exam').replace('_', ' ').toUpperCase();
+}
+
+function applyExamTypeDefaults() {
+    const typeEl = document.getElementById('exam-type');
+    const totalMarksEl = document.getElementById('exam-total-marks');
+    const passMarksEl = document.getElementById('exam-pass');
+    if (!typeEl || !totalMarksEl || !passMarksEl) return;
+
+    const selected = typeEl.value;
+    const total = ASSESSMENT_TOTALS[selected] || 30;
+    totalMarksEl.value = total;
+    passMarksEl.value = Math.ceil(total * 0.5);
+}
+
 async function loadExams() {
     const container = document.getElementById('tab-content');
     container.innerHTML = `
@@ -1178,7 +1225,7 @@ async function loadExams() {
                 <div class="flex justify-between items-start">
                     <div>
                         <h5 class="font-semibold text-black">${ex.title}</h5>
-                        <p class="text-xs text-black/40 mt-1">${ex.exam_type.toUpperCase()} &middot; ${ex.question_count} questions &middot; ${ex.total_marks} marks &middot; ${ex.duration_minutes} min</p>
+                        <p class="text-xs text-black/40 mt-1">${formatAssessmentType(ex)} &middot; ${ex.question_count} questions &middot; ${ex.total_marks} marks &middot; ${ex.duration_minutes} min</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-xs px-2 py-1 rounded-full font-medium ${ex.is_published ? 'bg-black/5 text-black/60' : 'bg-black/[0.04] text-black/50'}">${ex.is_published ? 'Published' : 'Draft'}</span>
@@ -1260,7 +1307,7 @@ async function loadExamsOverview() {
                         <div class="flex justify-between items-start">
                             <div>
                                 <h5 class="font-semibold text-black">${ex.title}</h5>
-                                <p class="text-xs text-black/40 mt-1">${ex.exam_type.toUpperCase()} · ${ex.question_count} questions · ${ex.total_marks} marks · ${ex.duration_minutes} min</p>
+                                <p class="text-xs text-black/40 mt-1">${formatAssessmentType(ex)} · ${ex.question_count} questions · ${ex.total_marks} marks · ${ex.duration_minutes} min</p>
                             </div>
                             <div class="flex items-center gap-2 flex-wrap justify-end">
                                 <span class="text-xs px-2 py-1 rounded-full font-medium ${ex.is_published ? 'bg-black/5 text-black/60' : 'bg-black/[0.04] text-black/50'}">${ex.is_published ? 'Published' : 'Draft'}</span>
@@ -1538,6 +1585,9 @@ function autoCalcEndTime() {
     }
 }
 
+document.getElementById('exam-type').addEventListener('change', applyExamTypeDefaults);
+applyExamTypeDefaults();
+
 document.getElementById('create-exam-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const types = [...document.querySelectorAll('.question-type-cb:checked')].map(cb => cb.value);
@@ -1547,12 +1597,14 @@ document.getElementById('create-exam-form').addEventListener('submit', async (e)
     const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/exams/generate`, {
         method: 'POST',
         body: JSON.stringify({
+            assessment_type: document.getElementById('exam-type').value,
             title: document.getElementById('exam-title').value,
             exam_type: document.getElementById('exam-type').value,
             num_questions: parseInt(document.getElementById('exam-num-questions').value),
             difficulty: document.getElementById('exam-difficulty').value,
             question_types: types,
             duration_minutes: parseInt(document.getElementById('exam-duration').value),
+            total_marks: parseInt(document.getElementById('exam-total-marks').value),
             passing_marks: parseInt(document.getElementById('exam-pass').value),
             start_time: document.getElementById('exam-start').value || null,
             end_time: document.getElementById('exam-end').value || null,
@@ -1564,6 +1616,7 @@ document.getElementById('create-exam-form').addEventListener('submit', async (e)
         const data = await resp.json();
         document.getElementById('create-exam-modal').classList.add('hidden');
         e.target.reset();
+        applyExamTypeDefaults();
         openReview(data.exam.id, data.exam.title);
         if (document.getElementById('course-detail').classList.contains('hidden')) {
             loadExamsOverview();

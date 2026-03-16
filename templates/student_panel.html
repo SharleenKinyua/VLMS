@@ -1008,7 +1008,12 @@ async function loadExamsPage() {
         byCourse[key].exams.push(e);
     });
 
-    const groupedCourses = Object.values(byCourse).sort((a, b) => a.courseTitle.localeCompare(b.courseTitle));
+    const groupedCourses = Object.values(byCourse).sort((a, b) => {
+        const urgencyA = Math.min(...a.exams.map(getExamUrgencyScore));
+        const urgencyB = Math.min(...b.exams.map(getExamUrgencyScore));
+        if (urgencyA !== urgencyB) return urgencyA - urgencyB;
+        return a.courseTitle.localeCompare(b.courseTitle);
+    });
     container.innerHTML = groupedCourses.map((group, index) => renderExamCourseCard(group, index)).join('');
 
     startCountdowns();
@@ -1017,15 +1022,13 @@ async function loadExamsPage() {
 function renderExamCourseCard(group, index) {
     const lanePriority = { in_progress: 0, open: 1, upcoming: 2, closed: 3 };
     const sorted = [...group.exams].sort((a, b) => {
-        const pa = lanePriority[a.availability] ?? 4;
-        const pb = lanePriority[b.availability] ?? 4;
+        const pa = lanePriority[getExamLane(a)] ?? 4;
+        const pb = lanePriority[getExamLane(b)] ?? 4;
         if (pa !== pb) return pa - pb;
-        const ta = a.start_time ? new Date(a.start_time).getTime() : Number.MAX_SAFE_INTEGER;
-        const tb = b.start_time ? new Date(b.start_time).getTime() : Number.MAX_SAFE_INTEGER;
-        return ta - tb;
+        return getExamUrgencyScore(a) - getExamUrgencyScore(b);
     });
 
-    const openItems = sorted.filter(e => e.availability === 'open');
+    const openItems = sorted.filter(e => getExamLane(e) === 'open' || getExamLane(e) === 'in_progress');
     const upcomingItems = sorted.filter(e => e.availability === 'upcoming');
     const closedItems = sorted.filter(e => e.availability === 'closed');
 
@@ -1052,6 +1055,34 @@ function renderExamCourseCard(group, index) {
             ${renderExamLane('Completed / Closed', closedItems, 'Past assessments and submissions')}
         </div>
     </div>`;
+}
+
+function getExamLane(exam) {
+    if (exam.submission_status === 'in_progress') return 'in_progress';
+    return exam.availability || 'open';
+}
+
+function getExamUrgencyScore(exam) {
+    const now = Date.now();
+    const lane = getExamLane(exam);
+
+    if (lane === 'in_progress') {
+        const end = exam.end_time ? new Date(exam.end_time).getTime() : now + 3600000;
+        return end - now;
+    }
+
+    if (lane === 'open') {
+        const end = exam.end_time ? new Date(exam.end_time).getTime() : now + 7200000;
+        return 1_000_000_000 + (end - now);
+    }
+
+    if (lane === 'upcoming') {
+        const start = exam.start_time ? new Date(exam.start_time).getTime() : now + 86_400_000;
+        return 2_000_000_000 + (start - now);
+    }
+
+    const ended = exam.end_time ? new Date(exam.end_time).getTime() : now;
+    return 4_000_000_000 + (now - ended);
 }
 
 function renderExamLane(title, exams, subtitle) {
@@ -1707,13 +1738,12 @@ function startCountdowns() {
     countdownInterval = setInterval(() => {
         const els = document.querySelectorAll('.exam-countdown');
         const now = new Date();
+        let shouldRefresh = false;
         els.forEach(el => {
             const start = new Date(el.dataset.start);
             const diff = start - now;
             if (diff <= 0) {
-                // Exam just opened — refresh to update buttons
-                clearInterval(countdownInterval);
-                loadDashboard();
+                shouldRefresh = true;
                 return;
             }
             const days = Math.floor(diff / 86400000);
@@ -1727,6 +1757,17 @@ function startCountdowns() {
             parts.push(`${secs}s`);
             el.textContent = 'Opens in ' + parts.join(' ');
         });
+
+        if (shouldRefresh) {
+            clearInterval(countdownInterval);
+            if (currentSection === 'exams') {
+                loadExamsPage();
+            } else if (currentSection === 'calendar') {
+                loadCalendarPage();
+            } else {
+                loadDashboard();
+            }
+        }
     }, 1000);
 }
 

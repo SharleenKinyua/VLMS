@@ -57,6 +57,31 @@
         border-color: rgba(255, 255, 255, 0.4);
         box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1), 0 0 20px rgba(255, 255, 255, 0.05);
     }
+    .glass-input:-webkit-autofill,
+    .glass-input:-webkit-autofill:hover,
+    .glass-input:-webkit-autofill:focus,
+    .glass-input:-webkit-autofill:active {
+        -webkit-text-fill-color: #ffffff;
+        transition: background-color 9999s ease-in-out 0s;
+        -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.06) inset;
+        box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.06) inset;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .loading-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 9999px;
+        background: rgba(0, 0, 0, 0.75);
+        animation: loadingPulse 1s ease-in-out infinite;
+    }
+    .loading-dot:nth-child(2) { animation-delay: 0.15s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes loadingPulse {
+        0%, 100% { transform: translateY(0); opacity: 0.35; }
+        50% { transform: translateY(-2px); opacity: 1; }
+    }
+
 
     /* Slide-up animation */
     .slide-up {
@@ -224,11 +249,14 @@
                 <div class="slide-up delay-4">
                     <button type="submit" id="login-btn"
                             class="glow-btn w-full text-black font-semibold py-3.5 rounded-xl transition duration-300 relative z-10">
-                        <span id="login-btn-text">Sign In</span>
-                        <svg id="login-spinner" class="hidden animate-spin mx-auto h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                        </svg>
+                        <span id="login-btn-text" class="inline-flex items-center justify-center gap-2">
+                            <span id="login-btn-label">Sign In</span>
+                            <span id="login-dots" class="hidden items-center gap-1">
+                                <span class="loading-dot"></span>
+                                <span class="loading-dot"></span>
+                                <span class="loading-dot"></span>
+                            </span>
+                        </span>
                     </button>
                 </div>
             </form>
@@ -266,20 +294,31 @@ function togglePassword(id, btn) {
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('login-btn');
-    const btnText = document.getElementById('login-btn-text');
-    const spinner = document.getElementById('login-spinner');
+    const btnLabel = document.getElementById('login-btn-label');
+    const dots = document.getElementById('login-dots');
     const errDiv = document.getElementById('login-error');
+
+    const setLoading = (loading) => {
+        btn.disabled = loading;
+        btn.classList.toggle('opacity-90', loading);
+        btn.classList.toggle('cursor-wait', loading);
+        btnLabel.textContent = loading ? 'Signing in' : 'Sign In';
+        dots.classList.toggle('hidden', !loading);
+        dots.classList.toggle('inline-flex', loading);
+    };
+
     btn.disabled = true;
-    btnText.classList.add('hidden');
-    spinner.classList.remove('hidden');
+    setLoading(true);
     errDiv.classList.add('hidden');
 
     try {
+        await new Promise(requestAnimationFrame);
+
         const resp = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                email: document.getElementById('email').value,
+                email: document.getElementById('email').value.trim(),
                 password: document.getElementById('password').value,
             }),
         });
@@ -288,9 +327,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         if (!resp.ok) {
             errDiv.textContent = data.error || 'Login failed';
             errDiv.classList.remove('hidden');
-            btn.disabled = false;
-            btnText.classList.remove('hidden');
-            spinner.classList.add('hidden');
+            setLoading(false);
             return;
         }
 
@@ -306,9 +343,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     } catch (err) {
         errDiv.textContent = 'Network error. Please try again.';
         errDiv.classList.remove('hidden');
-        btn.disabled = false;
-        btnText.classList.remove('hidden');
-        spinner.classList.add('hidden');
+        setLoading(false);
     }
 });
 </script>
