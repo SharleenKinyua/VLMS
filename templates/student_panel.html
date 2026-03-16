@@ -1248,8 +1248,8 @@ async function loadResourcesPage() {
                                 <p class="text-xs text-neutral-500">${m.file_type.toUpperCase()} • ${new Date(m.uploaded_at).toLocaleDateString()}</p>
                             </div>
                         </div>
-                        <a href="/uploads/${m.file_path}" target="_blank" rel="noopener"
-                           class="text-sm bg-white/10 text-neutral-300 px-3 py-1.5 rounded-lg hover:bg-white/20 transition-all duration-200 font-medium">Download</a>
+                                <a href="${m.file_type === 'pdf' ? '/student/materials/' + m.id + '/read' : '/uploads/' + m.file_path}" target="_blank" rel="noopener"
+                                    class="text-sm bg-white/10 text-neutral-300 px-3 py-1.5 rounded-lg hover:bg-white/20 transition-all duration-200 font-medium">${m.file_type === 'pdf' ? 'Read' : 'Download'}</a>
                     </div>
                 `).join('')}
             </div>
@@ -1923,7 +1923,7 @@ async function loadMaterials() {
             courseCache.materials = '<div class="space-y-2.5">' + data.materials.map(m => {
                 const t = materialTypeConfig[m.file_type] || materialTypeConfig.other;
                 return `
-                <a href="/uploads/${m.file_path}" target="_blank" rel="noopener"
+                     <a href="${m.file_type === 'pdf' ? '/student/materials/' + m.id + '/read' : '/uploads/' + m.file_path}" target="_blank" rel="noopener"
                    class="group flex items-center gap-4 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-4 transition-all duration-200">
                     <div class="w-11 h-11 rounded-xl ${t.color} flex items-center justify-center flex-shrink-0">
                         ${t.icon}

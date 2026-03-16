@@ -18,6 +18,33 @@ if 'reset_token_expires' not in cols:
 else:
     print("reset_token_expires already exists")
 
+cursor.execute("SHOW COLUMNS FROM learning_progress")
+lp_cols = [r[0] for r in cursor.fetchall()]
+
+if 'has_opened' not in lp_cols:
+    cursor.execute("ALTER TABLE learning_progress ADD COLUMN has_opened TINYINT(1) DEFAULT 0")
+    print("Added learning_progress.has_opened column")
+else:
+    print("learning_progress.has_opened already exists")
+
+if 'first_opened_at' not in lp_cols:
+    cursor.execute("ALTER TABLE learning_progress ADD COLUMN first_opened_at DATETIME NULL")
+    print("Added learning_progress.first_opened_at column")
+else:
+    print("learning_progress.first_opened_at already exists")
+
+if 'last_page' not in lp_cols:
+    cursor.execute("ALTER TABLE learning_progress ADD COLUMN last_page INT DEFAULT 0")
+    print("Added learning_progress.last_page column")
+else:
+    print("learning_progress.last_page already exists")
+
+if 'total_pages' not in lp_cols:
+    cursor.execute("ALTER TABLE learning_progress ADD COLUMN total_pages INT DEFAULT 0")
+    print("Added learning_progress.total_pages column")
+else:
+    print("learning_progress.total_pages already exists")
+
 conn.commit()
 cursor.close()
 conn.close()

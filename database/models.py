@@ -396,6 +396,10 @@ class LearningProgress(db.Model):
     material_id = db.Column(db.Integer, db.ForeignKey('materials.id'), nullable=False)
     progress_percent = db.Column(db.Float, default=0.0)
     time_spent_seconds = db.Column(db.Integer, default=0)
+    has_opened = db.Column(db.Boolean, default=False)
+    first_opened_at = db.Column(db.DateTime, nullable=True)
+    last_page = db.Column(db.Integer, default=0)
+    total_pages = db.Column(db.Integer, default=0)
     last_accessed = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     completed = db.Column(db.Boolean, default=False)
 
@@ -408,6 +412,10 @@ class LearningProgress(db.Model):
             'material_id': self.material_id,
             'progress_percent': self.progress_percent,
             'time_spent_seconds': self.time_spent_seconds,
+            'has_opened': self.has_opened,
+            'first_opened_at': self.first_opened_at.isoformat() if self.first_opened_at else None,
+            'last_page': self.last_page,
+            'total_pages': self.total_pages,
             'last_accessed': self.last_accessed.isoformat() if self.last_accessed else None,
             'completed': self.completed,
         }

@@ -1,45 +1,117 @@
 {% extends "base.html" %}
 {% block title %}Exam — MindStack{% endblock %}
 
+{% block head %}
+<style>
+    .exam-bg {
+        background:
+            radial-gradient(1200px 600px at 0% -10%, rgba(59, 130, 246, 0.20), transparent 55%),
+            radial-gradient(1000px 500px at 100% 0%, rgba(168, 85, 247, 0.18), transparent 55%),
+            linear-gradient(180deg, #020617 0%, #0b1020 45%, #09090b 100%);
+    }
+    .glass-card {
+        background: rgba(17, 24, 39, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+    }
+    .glass-nav {
+        background: rgba(2, 6, 23, 0.75);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        -webkit-backdrop-filter: blur(14px);
+        backdrop-filter: blur(14px);
+    }
+    .fade-up {
+        animation: fadeUp .45s cubic-bezier(.4,0,.2,1) both;
+    }
+    .slide-in {
+        animation: slideIn .5s cubic-bezier(.4,0,.2,1) both;
+    }
+    .question-card {
+        transition: transform .28s cubic-bezier(.4,0,.2,1), border-color .2s ease, box-shadow .28s ease;
+    }
+    .question-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(96, 165, 250, 0.45);
+        box-shadow: 0 14px 30px rgba(2, 6, 23, 0.35);
+    }
+    .option-row {
+        transition: all .22s ease;
+    }
+    .option-row:hover {
+        transform: translateX(4px);
+    }
+    .answer-nav {
+        transition: all .2s ease;
+    }
+    .answer-nav:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 18px rgba(2, 6, 23, 0.35);
+    }
+    .answer-nav.current {
+        border-color: rgba(96, 165, 250, 0.9);
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+    }
+    .sticky-side {
+        position: sticky;
+        top: 5.5rem;
+    }
+    .anim-delay-80 {
+        animation-delay: 80ms;
+    }
+    .risk-safe { color: #4ade80; }
+    .risk-mid { color: #facc15; }
+    .risk-high { color: #f87171; }
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateX(-16px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+</style>
+{% endblock %}
+
 {% block body %}
-<div class="min-h-screen bg-gray-900 text-white">
+<div class="exam-bg min-h-screen text-white">
     <!-- Exam Header -->
-    <nav class="bg-gray-800 border-b border-gray-700 px-4 py-3">
-        <div class="max-w-5xl mx-auto flex justify-between items-center">
+    <nav class="glass-nav sticky top-0 z-30 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-4">
-                <h1 class="text-lg font-bold text-primary-400">MindStack Exam</h1>
-                <span id="exam-title" class="text-sm text-gray-400"></span>
+                <h1 class="text-lg font-bold text-primary-300">MindStack Exam</h1>
+                <span id="exam-title" class="text-sm text-slate-300"></span>
             </div>
-            <div class="flex items-center space-x-6">
-                <div class="text-center">
-                    <div class="text-xs text-gray-400">Time Left</div>
+            <div class="flex items-center space-x-3 sm:space-x-6">
+                <div class="text-center glass-card rounded-xl px-3 py-2">
+                    <div class="text-[11px] uppercase tracking-wide text-slate-400">Time Left</div>
                     <div id="timer" class="text-lg font-mono font-bold text-yellow-400">--:--</div>
                 </div>
-                <div class="text-center">
-                    <div class="text-xs text-gray-400">Risk Score</div>
-                    <div id="risk-score" class="text-lg font-bold text-green-400">0</div>
+                <div class="text-center glass-card rounded-xl px-3 py-2">
+                    <div class="text-[11px] uppercase tracking-wide text-slate-400">Risk Score</div>
+                    <div id="risk-score" class="text-lg font-bold risk-safe">0</div>
                 </div>
                 <button onclick="submitExam()"
-                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-[1.02]">
                     Submit Exam
                 </button>
             </div>
         </div>
     </nav>
 
-    <div class="max-w-5xl mx-auto py-6 px-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div class="max-w-6xl mx-auto py-6 px-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- Questions Panel -->
         <div class="lg:col-span-3 space-y-6" id="questions-panel">
             <!-- Face Verification Screen -->
-            <div id="face-verify-screen" class="bg-gray-800 rounded-xl p-8 text-center">
-                <h2 class="text-xl font-semibold mb-4">Face Verification Required</h2>
-                <p class="text-gray-400 mb-6">Please allow camera access and look directly at the camera.</p>
-                <video id="verify-video" autoplay class="mx-auto rounded-lg mb-4 w-80 h-60 bg-black"></video>
+            <div id="face-verify-screen" class="glass-card rounded-2xl p-8 text-center fade-up">
+                <h2 class="text-2xl font-semibold mb-3">Face Verification Required</h2>
+                <p class="text-slate-300 mb-6">Please allow camera access and look directly at the camera.</p>
+                <video id="verify-video" autoplay class="mx-auto rounded-xl mb-4 w-80 h-60 bg-black border border-slate-700"></video>
                 <button onclick="verifyFace()" id="verify-btn"
-                        class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition">
+                        class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-[1.02]">
                     Verify Face & Start Exam
                 </button>
-                <p id="verify-status" class="text-sm mt-3 text-gray-400"></p>
+                <p id="verify-status" class="text-sm mt-3 text-slate-300"></p>
             </div>
 
             <!-- Questions (hidden until verified) -->
@@ -47,25 +119,25 @@
         </div>
 
         <!-- Sidebar: Camera & Question Nav -->
-        <div class="space-y-4">
+        <div class="space-y-4 sticky-side">
             <!-- Proctoring Camera -->
-            <div class="bg-gray-800 rounded-xl p-4">
-                <div class="text-xs text-gray-400 mb-2 flex items-center space-x-1">
+            <div class="glass-card rounded-2xl p-4 slide-in">
+                <div class="text-xs text-slate-300 mb-2 flex items-center space-x-1">
                     <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                     <span>Camera Active</span>
                 </div>
-                <video id="proctor-video" autoplay muted class="w-full rounded-lg bg-black aspect-video"></video>
+                <video id="proctor-video" autoplay muted class="w-full rounded-xl bg-black aspect-video border border-slate-700"></video>
                 <canvas id="proctor-canvas" class="hidden"></canvas>
             </div>
 
             <!-- Question Navigator -->
-            <div class="bg-gray-800 rounded-xl p-4">
-                <div class="text-xs text-gray-400 mb-3">Questions</div>
+            <div class="glass-card rounded-2xl p-4 slide-in anim-delay-80">
+                <div class="text-xs text-slate-300 mb-3 uppercase tracking-wide">Questions</div>
                 <div id="question-nav" class="grid grid-cols-5 gap-2"></div>
             </div>
 
             <!-- Violation Alert -->
-            <div id="violation-alert" class="hidden bg-red-900/50 border border-red-700 rounded-xl p-4">
+            <div id="violation-alert" class="hidden bg-red-900/40 border border-red-500/60 rounded-2xl p-4 slide-in">
                 <div class="text-sm font-medium text-red-400">Warning</div>
                 <p id="violation-msg" class="text-xs text-red-300 mt-1"></p>
             </div>
@@ -157,38 +229,64 @@ function renderQuestions() {
     const nav = document.getElementById('question-nav');
 
     container.innerHTML = questions.map((q, i) => `
-        <div id="q-${q.id}" class="bg-gray-800 rounded-xl p-6">
+        <div id="q-${q.id}" class="glass-card question-card rounded-2xl p-6 fade-up" style="animation-delay:${Math.min(i * 45, 360)}ms">
             <div class="flex justify-between items-start mb-4">
-                <span class="bg-primary-900 text-primary-300 text-xs font-medium px-2 py-1 rounded">Q${i + 1}</span>
-                <span class="text-xs text-gray-500">${q.marks} marks • ${q.difficulty}</span>
+                <span class="bg-primary-900/70 border border-primary-700 text-primary-300 text-xs font-medium px-2 py-1 rounded-lg">Q${i + 1}</span>
+                <span class="text-xs text-slate-400">${q.marks} marks • ${q.difficulty}</span>
             </div>
-            <p class="text-gray-200 mb-4">${q.question_text}</p>
+            <p class="text-slate-100 mb-4 leading-relaxed">${q.question_text}</p>
             ${q.question_type === 'mcq' ? renderMCQ(q) : renderTextAnswer(q)}
         </div>
     `).join('');
 
     nav.innerHTML = questions.map((q, i) => `
-        <button onclick="document.getElementById('q-${q.id}').scrollIntoView({behavior:'smooth'})"
-                class="w-10 h-10 rounded-lg bg-gray-700 hover:bg-gray-600 text-xs font-medium transition answer-nav"
+        <button onclick="goToQuestion(${q.id}, this)"
+                class="w-10 h-10 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 text-xs font-medium answer-nav"
                 data-qid="${q.id}">${i + 1}</button>
     `).join('');
+
+    setupQuestionObserver();
 }
 
 function renderMCQ(q) {
     return q.options.map((opt, i) => `
-        <label class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700/50 cursor-pointer transition mb-2">
+        <label class="option-row flex items-center space-x-3 p-3 rounded-xl bg-slate-800/35 hover:bg-slate-700/40 border border-slate-700/60 cursor-pointer mb-2">
             <input type="radio" name="q_${q.id}" value="${i}" onchange="saveAnswer(${q.id}, 'mcq', ${i})"
                    class="w-4 h-4 text-primary-500">
-            <span class="text-gray-300">${opt}</span>
+            <span class="text-slate-200">${opt}</span>
         </label>
     `).join('');
 }
 
 function renderTextAnswer(q) {
     return `<textarea onchange="saveAnswer(${q.id}, '${q.question_type}', this.value)"
-                      class="w-full bg-gray-700 text-gray-200 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-primary-500 outline-none"
+                      class="w-full bg-slate-900/60 text-slate-100 border border-slate-700 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition"
                       rows="${q.question_type === 'essay' ? 8 : 3}"
                       placeholder="Type your answer..."></textarea>`;
+}
+
+function goToQuestion(questionId, btn) {
+    document.querySelectorAll('.answer-nav').forEach(b => b.classList.remove('current'));
+    if (btn) btn.classList.add('current');
+    document.getElementById(`q-${questionId}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setupQuestionObserver() {
+    const cards = document.querySelectorAll('[id^="q-"]');
+    const navButtons = document.querySelectorAll('.answer-nav');
+    if (!cards.length || !navButtons.length) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            const qid = entry.target.id.replace('q-', '');
+            navButtons.forEach(b => b.classList.remove('current'));
+            const active = document.querySelector(`.answer-nav[data-qid="${qid}"]`);
+            if (active) active.classList.add('current');
+        });
+    }, { threshold: 0.45 });
+
+    cards.forEach(card => observer.observe(card));
 }
 
 // ─── Save Answer ───
@@ -205,7 +303,7 @@ async function saveAnswer(questionId, type, value) {
     // Mark question as answered in nav
     const navBtn = document.querySelector(`[data-qid="${questionId}"]`);
     if (navBtn) {
-        navBtn.classList.remove('bg-gray-700');
+        navBtn.classList.remove('bg-slate-700');
         navBtn.classList.add('bg-primary-600');
     }
 }
@@ -239,9 +337,9 @@ function startProctoring() {
 
             // Update risk score color
             const scoreEl = document.getElementById('risk-score');
-            if (data.risk_score > 80) scoreEl.className = 'text-lg font-bold text-red-400';
-            else if (data.risk_score > 40) scoreEl.className = 'text-lg font-bold text-yellow-400';
-            else scoreEl.className = 'text-lg font-bold text-green-400';
+            if (data.risk_score > 80) scoreEl.className = 'text-lg font-bold risk-high';
+            else if (data.risk_score > 40) scoreEl.className = 'text-lg font-bold risk-mid';
+            else scoreEl.className = 'text-lg font-bold risk-safe';
 
             // Show violation alert
             if (data.violations && data.violations.length > 0) {

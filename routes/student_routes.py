@@ -20,6 +20,39 @@ def dashboard():
     return render_template('student_panel.html')
 
 
+@student_bp.route('/student/materials/<int:material_id>/read')
+@jwt_required()
+@role_required('student')
+def read_material(material_id):
+    identity = get_identity()
+    material = Material.query.get(material_id)
+    if not material:
+        return render_template('student_panel.html')
+
+    enrollment = Enrollment.query.filter_by(
+        student_id=identity['id'], course_id=material.course_id, status='active'
+    ).first()
+    if not enrollment:
+        return render_template('student_panel.html')
+
+    if material.file_type != 'pdf':
+        return render_template('student_panel.html')
+
+    progress = LearningProgress.query.filter_by(
+        student_id=identity['id'], material_id=material_id
+    ).first()
+
+    material_data = material.to_dict()
+    material_data['file_url'] = f"/uploads/{material.file_path}"
+    material_data['course_title'] = material.course.title if material.course else None
+
+    return render_template(
+        'material_reader.html',
+        material_data=material_data,
+        progress_data=progress.to_dict() if progress else None,
+    )
+
+
 # ──────────────── COURSE ROUTES ────────────────
 
 @student_bp.route('/api/student/courses', methods=['GET'])
@@ -159,7 +192,17 @@ def get_course_lectures(course_id):
 @role_required('student')
 def update_progress(material_id):
     identity = get_identity()
-    data = request.get_json()
+    data = request.get_json() or {}
+
+    material = Material.query.get(material_id)
+    if not material:
+        return jsonify({'error': 'Material not found'}), 404
+
+    enrollment = Enrollment.query.filter_by(
+        student_id=identity['id'], course_id=material.course_id, status='active'
+    ).first()
+    if not enrollment:
+        return jsonify({'error': 'Not enrolled in this course'}), 403
 
     progress = LearningProgress.query.filter_by(
         student_id=identity['id'], material_id=material_id
@@ -172,15 +215,64 @@ def update_progress(material_id):
         )
         db.session.add(progress)
 
+    progress.has_opened = True
+    if not progress.first_opened_at:
+        progress.first_opened_at = datetime.utcnow()
+
+    if data.get('last_page') is not None:
+        progress.last_page = max(0, int(data['last_page']))
+    if data.get('total_pages') is not None:
+        progress.total_pages = max(0, int(data['total_pages']))
+
     if data.get('progress_percent') is not None:
         progress.progress_percent = min(100, max(0, data['progress_percent']))
+
+    if progress.total_pages > 0 and progress.last_page > 0:
+        computed_percent = min(100, (progress.last_page / progress.total_pages) * 100)
+        progress.progress_percent = max(progress.progress_percent or 0, computed_percent)
+
     if data.get('time_spent_seconds') is not None:
-        progress.time_spent_seconds += data['time_spent_seconds']
-    if progress.progress_percent >= 100:
+        progress.time_spent_seconds += max(0, int(data['time_spent_seconds']))
+
+    if progress.progress_percent >= 100 or (
+        progress.total_pages > 0 and progress.last_page >= progress.total_pages
+    ):
         progress.completed = True
 
     db.session.commit()
     return jsonify({'progress': progress.to_dict()})
+
+
+@student_bp.route('/api/student/materials/<int:material_id>/progress', methods=['GET'])
+@jwt_required()
+@role_required('student')
+def get_material_progress(material_id):
+    identity = get_identity()
+    material = Material.query.get(material_id)
+    if not material:
+        return jsonify({'error': 'Material not found'}), 404
+
+    enrollment = Enrollment.query.filter_by(
+        student_id=identity['id'], course_id=material.course_id, status='active'
+    ).first()
+    if not enrollment:
+        return jsonify({'error': 'Not enrolled in this course'}), 403
+
+    progress = LearningProgress.query.filter_by(
+        student_id=identity['id'], material_id=material_id
+    ).first()
+
+    return jsonify({
+        'material': material.to_dict(),
+        'progress': progress.to_dict() if progress else None,
+    })
+
+
+@student_bp.route('/api/student/materials/<int:material_id>/progress', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def update_material_progress(material_id):
+    return update_progress(material_id)
 
 
 # ──────────────── EXAM ROUTES ────────────────

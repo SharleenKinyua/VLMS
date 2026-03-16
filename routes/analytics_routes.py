@@ -2,13 +2,27 @@ from flask import Blueprint, request, jsonify, render_template
 from flask_jwt_extended import jwt_required
 from database.models import (
     db, User, Course, Enrollment, Exam, Submission,
-    Violation, UserAnalytics, Answer, Question, LearningProgress
+    Violation, UserAnalytics, Answer, Question, LearningProgress, Material
 )
 from utils.security import role_required, get_identity
 from sqlalchemy import func
 from datetime import datetime, timedelta
 
 analytics_bp = Blueprint('analytics', __name__)
+
+
+def _score_trend(scores):
+    if len(scores) < 2:
+        return 'stable'
+    midpoint = len(scores) // 2
+    first_avg = sum(scores[:midpoint]) / max(1, len(scores[:midpoint]))
+    second_avg = sum(scores[midpoint:]) / max(1, len(scores[midpoint:]))
+    delta = second_avg - first_avg
+    if delta > 3:
+        return 'improving'
+    if delta < -3:
+        return 'declining'
+    return 'stable'
 
 
 # ──────────────── PAGE ROUTES ────────────────
@@ -86,6 +100,183 @@ def course_analytics(course_id):
         'total_students': total_students,
         'exam_stats': exam_stats,
     })
+
+
+@analytics_bp.route('/api/analytics/course/<int:course_id>/student-insights', methods=['GET'])
+@jwt_required()
+@role_required('lecturer', 'admin')
+def course_student_insights(course_id):
+    identity = get_identity()
+
+    if identity['role'] == 'lecturer':
+        course = Course.query.filter_by(id=course_id, lecturer_id=identity['id']).first()
+        if not course:
+            return jsonify({'error': 'Course not found'}), 404
+    else:
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'error': 'Course not found'}), 404
+
+    exams = Exam.query.filter_by(course_id=course_id).all()
+    exam_ids = [e.id for e in exams]
+
+    students = db.session.query(User).join(
+        Enrollment, Enrollment.student_id == User.id
+    ).filter(
+        Enrollment.course_id == course_id,
+        Enrollment.status == 'active',
+        User.role == 'student'
+    ).all()
+
+    material_ids = [m.id for m in Material.query.filter_by(course_id=course_id).all()]
+
+    student_rows = []
+    class_scores = []
+    class_study_hours = []
+    at_risk_count = 0
+
+    for student in students:
+        submissions = Submission.query.filter(
+            Submission.student_id == student.id,
+            Submission.exam_id.in_(exam_ids) if exam_ids else False
+        ).order_by(Submission.submitted_at.asc(), Submission.started_at.asc()).all() if exam_ids else []
+
+        graded_scores = [s.total_score for s in submissions if s.total_score is not None]
+        avg_score = round(sum(graded_scores) / len(graded_scores), 1) if graded_scores else 0
+        trend = _score_trend(graded_scores)
+
+        progress_rows = LearningProgress.query.filter(
+            LearningProgress.student_id == student.id,
+            LearningProgress.material_id.in_(material_ids) if material_ids else False
+        ).all() if material_ids else []
+
+        materials_read = sum(1 for p in progress_rows if p.has_opened or (p.progress_percent or 0) > 0)
+        total_materials = len(material_ids)
+        read_rate = round((materials_read / total_materials) * 100, 1) if total_materials else 0
+        study_hours = round(sum((p.time_spent_seconds or 0) for p in progress_rows) / 3600, 2)
+        avg_material_progress = round(
+            sum((p.progress_percent or 0) for p in progress_rows) / len(progress_rows), 1
+        ) if progress_rows else 0
+
+        score_history = [
+            {
+                'exam_title': (s.exam.title if s.exam else 'Exam'),
+                'score': s.total_score,
+                'submitted_at': s.submitted_at.isoformat() if s.submitted_at else None,
+            }
+            for s in submissions if s.total_score is not None
+        ]
+
+        if avg_score < 50 and len(graded_scores) > 0:
+            at_risk_count += 1
+
+        if len(graded_scores) > 0:
+            class_scores.append(avg_score)
+        class_study_hours.append(study_hours)
+
+        student_rows.append({
+            'student_id': student.id,
+            'student_name': f'{student.first_name} {student.last_name}',
+            'email': student.email,
+            'exam_attempts': len(submissions),
+            'graded_exams': len(graded_scores),
+            'average_score': avg_score,
+            'trend': trend,
+            'study_hours': study_hours,
+            'materials_read': materials_read,
+            'materials_total': total_materials,
+            'read_rate': read_rate,
+            'avg_material_progress': avg_material_progress,
+            'score_history': score_history,
+        })
+
+    pass_rate = 0
+    if class_scores:
+        pass_rate = round(sum(1 for s in class_scores if s >= 50) / len(class_scores) * 100, 1)
+
+    summary = {
+        'total_students': len(students),
+        'class_average_score': round(sum(class_scores) / len(class_scores), 1) if class_scores else 0,
+        'class_pass_rate': pass_rate,
+        'average_study_hours': round(sum(class_study_hours) / len(class_study_hours), 2) if class_study_hours else 0,
+        'at_risk_students': at_risk_count,
+    }
+
+    return jsonify({
+        'course_id': course_id,
+        'course_title': course.title,
+        'summary': summary,
+        'students': sorted(student_rows, key=lambda x: (x['average_score'] if x['graded_exams'] else -1), reverse=True),
+    })
+
+
+@analytics_bp.route('/api/analytics/course/<int:course_id>/materials-reading', methods=['GET'])
+@jwt_required()
+@role_required('lecturer', 'admin')
+def course_material_reading_analytics(course_id):
+    identity = get_identity()
+
+    if identity['role'] == 'lecturer':
+        course = Course.query.filter_by(id=course_id, lecturer_id=identity['id']).first()
+        if not course:
+            return jsonify({'error': 'Course not found'}), 404
+    else:
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'error': 'Course not found'}), 404
+
+    students = db.session.query(User).join(
+        Enrollment, Enrollment.student_id == User.id
+    ).filter(
+        Enrollment.course_id == course_id,
+        Enrollment.status == 'active',
+        User.role == 'student'
+    ).all()
+
+    materials = Material.query.filter_by(course_id=course_id).order_by(Material.uploaded_at.desc()).all()
+    if not materials or not students:
+        return jsonify({'course_id': course_id, 'records': [], 'summary': []})
+
+    student_ids = [s.id for s in students]
+    material_ids = [m.id for m in materials]
+
+    progress_rows = LearningProgress.query.filter(
+        LearningProgress.student_id.in_(student_ids),
+        LearningProgress.material_id.in_(material_ids)
+    ).all()
+    progress_map = {(p.student_id, p.material_id): p for p in progress_rows}
+
+    records = []
+    for material in materials:
+        for student in students:
+            p = progress_map.get((student.id, material.id))
+            has_read = bool(p and (p.has_opened or (p.progress_percent or 0) > 0 or (p.time_spent_seconds or 0) > 0))
+            records.append({
+                'material_id': material.id,
+                'material_title': material.title,
+                'student_id': student.id,
+                'student_name': f"{student.first_name} {student.last_name}",
+                'has_read': has_read,
+                'last_page': p.last_page if p else 0,
+                'total_pages': p.total_pages if p else 0,
+                'progress_percent': round(float(p.progress_percent or 0), 1) if p else 0,
+                'time_spent_minutes': round((p.time_spent_seconds or 0) / 60, 1) if p else 0,
+                'last_accessed': p.last_accessed.isoformat() if (p and p.last_accessed) else None,
+            })
+
+    summary = []
+    for material in materials:
+        material_records = [r for r in records if r['material_id'] == material.id]
+        read_count = sum(1 for r in material_records if r['has_read'])
+        summary.append({
+            'material_id': material.id,
+            'material_title': material.title,
+            'students_read': read_count,
+            'students_total': len(material_records),
+            'read_rate': round((read_count / len(material_records)) * 100, 1) if material_records else 0,
+        })
+
+    return jsonify({'course_id': course_id, 'records': records, 'summary': summary})
 
 
 # ──────────────── MALPRACTICE REPORT ────────────────

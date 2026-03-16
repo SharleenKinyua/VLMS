@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Material Reader — MindStack{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+    .reader-shell { background: #0b0b0b; color: #fff; }
+    .reader-card { background: #151515; border: 1px solid rgba(255,255,255,0.08); }
+    .reader-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12); }
+    .reader-btn:hover { background: rgba(255,255,255,0.16); }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="reader-shell min-h-screen">
+    <header class="sticky top-0 z-20 backdrop-blur bg-black/80 border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div>
+                <h1 class="text-lg font-semibold">{{ material_data.title }}</h1>
+                <p class="text-xs text-neutral-400">{{ material_data.course_title or 'Course Material' }}</p>
+            </div>
+            <a href="/student/dashboard?view=resources" class="reader-btn px-3 py-2 rounded-lg text-sm">Back to Dashboard</a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-5 space-y-4">
+        <div class="reader-card rounded-xl p-3 md:p-4 flex flex-wrap items-center gap-3 justify-between">
+            <div class="flex items-center gap-2">
+                <button id="prev-page" class="reader-btn px-3 py-2 rounded-lg text-sm">Prev</button>
+                <button id="next-page" class="reader-btn px-3 py-2 rounded-lg text-sm">Next</button>
+                <span class="text-sm text-neutral-300">Page <span id="page-num">1</span> / <span id="page-count">-</span></span>
+            </div>
+            <div class="text-xs text-neutral-400">
+                Last reached: <span id="last-reached" class="text-neutral-300">-</span>
+            </div>
+        </div>
+
+        <div class="reader-card rounded-xl p-3 md:p-5">
+            <div class="overflow-auto">
+                <canvas id="pdf-canvas" class="mx-auto max-w-full rounded-lg"></canvas>
+            </div>
+        </div>
+
+        <div class="text-xs text-neutral-500">Reading progress is automatically tracked for lecturer analytics.</div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="material-data" type="application/json">{{ material_data|tojson }}</script>
+<script id="progress-data" type="application/json">{{ (progress_data or {})|tojson }}</script>
+<script>
+const user = AUTH.getUser();
+if (!user || user.role !== 'student') {
+    window.location.href = '/login';
+}
+
+const MATERIAL = JSON.parse(document.getElementById('material-data').textContent || '{}');
+const PROGRESS = JSON.parse(document.getElementById('progress-data').textContent || '{}');
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pdfDoc = null;
+let currentPage = 1;
+let totalPages = 0;
+let renderInProgress = false;
+let pendingPage = null;
+
+const canvas = document.getElementById('pdf-canvas');
+const ctx = canvas.getContext('2d');
+const pageNumEl = document.getElementById('page-num');
+const pageCountEl = document.getElementById('page-count');
+const lastReachedEl = document.getElementById('last-reached');
+
+function formatProgressLabel(page, pages) {
+    if (!page || !pages) return '-';
+    return `${page} / ${pages}`;
+}
+
+function queueRender(pageNumber) {
+    if (renderInProgress) {
+        pendingPage = pageNumber;
+        return;
+    }
+    renderPage(pageNumber);
+}
+
+async function renderPage(pageNumber) {
+    renderInProgress = true;
+    const page = await pdfDoc.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1.25 });
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    renderInProgress = false;
+
+    pageNumEl.textContent = pageNumber;
+    lastReachedEl.textContent = formatProgressLabel(currentPage, totalPages);
+
+    if (pendingPage !== null) {
+        const next = pendingPage;
+        pendingPage = null;
+        renderPage(next);
+    }
+}
+
+async function syncProgress(extra = {}) {
+    const payload = {
+        last_page: currentPage,
+        total_pages: totalPages,
+        ...extra,
+    };
+    await AUTH.fetch(`/api/student/materials/${MATERIAL.id}/progress`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+}
+
+document.getElementById('prev-page').addEventListener('click', async () => {
+    if (currentPage <= 1) return;
+    currentPage -= 1;
+    queueRender(currentPage);
+    await syncProgress();
+});
+
+document.getElementById('next-page').addEventListener('click', async () => {
+    if (currentPage >= totalPages) return;
+    currentPage += 1;
+    queueRender(currentPage);
+    await syncProgress();
+});
+
+(async function initReader() {
+    const loadingTask = pdfjsLib.getDocument(MATERIAL.file_url);
+    pdfDoc = await loadingTask.promise;
+    totalPages = pdfDoc.numPages;
+    pageCountEl.textContent = totalPages;
+
+    const savedPage = parseInt(PROGRESS.last_page || 1, 10);
+    currentPage = Math.min(Math.max(savedPage, 1), totalPages);
+    queueRender(currentPage);
+
+    await syncProgress({ has_opened: true });
+
+    setInterval(() => {
+        syncProgress({ time_spent_seconds: 15 });
+    }, 15000);
+})();
+</script>
+{% endblock %}

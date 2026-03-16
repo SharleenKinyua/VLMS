@@ -3,115 +3,212 @@
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; letter-spacing: -0.011em; }
+
+    .glass-nav-light {
+        background: rgba(255, 255, 255, 0.85);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        backdrop-filter: blur(24px) saturate(180%);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .glass-nav-light.scrolled {
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    }
+    .nav-pill { position: relative; transition: all 0.3s cubic-bezier(.4,0,.2,1); }
+    .nav-pill::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 50%;
+        width: 0;
+        height: 2px;
+        background: #000;
+        border-radius: 2px;
+        transition: all 0.3s cubic-bezier(.4,0,.2,1);
+        transform: translateX(-50%);
+    }
+    .nav-pill:hover::after, .nav-pill.active::after { width: 60%; }
+    .nav-pill.active { color: #000 !important; }
+    .nav-pill:hover { transform: translateY(-1px); color: #000 !important; }
+
+    .dropdown-panel {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.97);
+        pointer-events: none;
+        transition: all 0.25s cubic-bezier(.4,0,.2,1);
+    }
+    .dropdown-panel.open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+    .mobile-panel {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s cubic-bezier(.4,0,.2,1), opacity 0.25s ease;
+        opacity: 0;
+    }
+    .mobile-panel.open { max-height: 420px; opacity: 1; }
+    .avatar-ring { position: relative; }
+    .avatar-ring::before {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 9999px;
+        background: linear-gradient(135deg, #000, #666, #000);
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .avatar-ring:hover::before { opacity: 1; animation: pulse-ring 2s ease-in-out infinite; }
+    @keyframes pulse-ring {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 0.1; transform: scale(1.1); }
+    }
+    .logo-text {
+        background: linear-gradient(90deg, #000 0%, #666 40%, #000 60%, #666 100%);
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: logo-shimmer 6s ease-in-out infinite;
+    }
+    @keyframes logo-shimmer {
+        0% { background-position: 100% 50%; }
+        100% { background-position: -100% 50%; }
+    }
+    .nav-fade-in { animation: fadeUp 0.5s cubic-bezier(.4,0,.2,1) both; }
+    .nav-delay-1 { animation-delay: 0.05s; }
+    .nav-delay-2 { animation-delay: 0.1s; }
+    .nav-delay-3 { animation-delay: 0.15s; }
+    .nav-delay-4 { animation-delay: 0.2s; }
+    .nav-delay-5 { animation-delay: 0.25s; }
+
+    .analytics-bg { background: #f8fafc; }
+    .glass-card {
+        background: #ffffff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+    #course-select { color-scheme: light; }
+    #course-select option {
+        background: #ffffff;
+        color: #111827;
+    }
+    .fade-up { animation: fadeUp .45s cubic-bezier(.4,0,.2,1) both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+</style>
 {% endblock %}
 
 {% block body %}
-<div class="min-h-screen bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center space-x-3">
-                    <h1 class="text-xl font-bold text-primary-700">MindStack</h1>
-                    <span class="bg-orange-100 text-orange-700 text-xs font-medium px-2.5 py-0.5 rounded-full">Analytics</span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="#" onclick="goBack()" class="text-sm text-gray-600 hover:text-primary-700">Dashboard</a>
-                    <span id="user-name" class="text-sm text-gray-600"></span>
-                    <button onclick="logout()" class="text-sm text-red-600 hover:text-red-700 font-medium">Logout</button>
-                </div>
-            </div>
-        </div>
-    </nav>
+<div class="analytics-bg min-h-screen text-slate-900">
+    {% set lecturer_active_page = 'analytics' %}
+    {% include 'partials/lecturer_header.html' %}
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 class="text-2xl font-bold text-gray-800 mb-8">Analytics Dashboard</h2>
-
-        <!-- Admin Stats (visible to admin) -->
-        <div id="admin-stats" class="hidden mb-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
-                    <div class="text-2xl font-bold text-primary-700" id="stat-total-users">-</div>
-                    <div class="text-xs text-gray-500 mt-1">Total Users</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
-                    <div class="text-2xl font-bold text-accent-600" id="stat-total-students">-</div>
-                    <div class="text-xs text-gray-500 mt-1">Students</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
-                    <div class="text-2xl font-bold text-purple-600" id="stat-total-lecturers">-</div>
-                    <div class="text-xs text-gray-500 mt-1">Lecturers</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
-                    <div class="text-2xl font-bold text-blue-600" id="stat-total-courses">-</div>
-                    <div class="text-xs text-gray-500 mt-1">Courses</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
-                    <div class="text-2xl font-bold text-yellow-600" id="stat-total-exams">-</div>
-                    <div class="text-xs text-gray-500 mt-1">Exams</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
-                    <div class="text-2xl font-bold text-gray-700" id="stat-total-submissions">-</div>
-                    <div class="text-xs text-gray-500 mt-1">Submissions</div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center">
-                    <div class="text-2xl font-bold text-red-600" id="stat-flagged">-</div>
-                    <div class="text-xs text-gray-500 mt-1">Flagged</div>
-                </div>
-            </div>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div class="fade-up">
+            <h2 class="text-3xl font-bold">Course Analytics Intelligence</h2>
+            <p class="text-sm text-slate-600 mt-1">Track class trends, student performance, and study habits with live insights.</p>
         </div>
 
-        <!-- Charts Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Course Performance Chart -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="font-semibold text-gray-800 mb-4">Course Performance</h3>
-                <div id="no-chart-data" class="text-center text-gray-400 py-8">
-                    Select a course to view performance data
-                </div>
-                <canvas id="performanceChart" class="hidden"></canvas>
-            </div>
-
-            <!-- Malpractice Overview -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="font-semibold text-gray-800 mb-4">Malpractice Reports</h3>
-                <div id="malpractice-content" class="text-center text-gray-400 py-8">
-                    No malpractice data available
-                </div>
-            </div>
-        </div>
-
-        <!-- Course Selector for Lecturer -->
-        <div id="course-selector" class="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 class="font-semibold text-gray-800 mb-4">Select Course for Detailed Analytics</h3>
+        <div id="course-selector" class="glass-card rounded-2xl p-5 fade-up">
+            <label class="block text-sm font-medium text-slate-700 mb-2">Choose course</label>
             <select id="course-select" title="Select a course" onchange="loadCourseAnalytics(this.value)"
-                    class="w-full max-w-md px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+                    class="w-full max-w-xl bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:outline-none focus:border-black">
                 <option value="">-- Select a course --</option>
             </select>
         </div>
 
-        <!-- Detailed Course Stats -->
-        <div id="course-stats" class="hidden mt-8">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 class="font-semibold text-gray-800 mb-4">Exam Statistics</h3>
+        <div id="kpi-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"></div>
+
+        <div id="charts-grid" class="hidden grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div class="glass-card rounded-2xl p-5 xl:col-span-2 fade-up">
+                <h3 class="font-semibold mb-3">Class Performance Trend</h3>
+                <canvas id="performanceChart" height="120"></canvas>
+            </div>
+            <div class="glass-card rounded-2xl p-5 fade-up">
+                <h3 class="font-semibold mb-3">Student Trend Breakdown</h3>
+                <canvas id="trendChart" height="180"></canvas>
+            </div>
+            <div class="glass-card rounded-2xl p-5 xl:col-span-3 fade-up">
+                <h3 class="font-semibold mb-3">Study Habits (Top Students by Study Time)</h3>
+                <canvas id="studyHabitsChart" height="100"></canvas>
+            </div>
+        </div>
+
+        <div id="tables-grid" class="hidden grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="glass-card rounded-2xl p-5 fade-up">
+                <h3 class="font-semibold mb-3">Exam Statistics</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
-                        <thead class="bg-gray-50">
+                        <thead class="text-slate-500 border-b border-slate-200">
                             <tr>
-                                <th class="text-left py-3 px-4 font-medium text-gray-600">Exam</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-600">Submissions</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-600">Average</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-600">Highest</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-600">Lowest</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-600">Pass Rate</th>
+                                <th class="text-left py-2">Exam</th>
+                                <th class="text-left py-2">Subs</th>
+                                <th class="text-left py-2">Avg</th>
+                                <th class="text-left py-2">Pass</th>
                             </tr>
                         </thead>
-                        <tbody id="exam-stats-body" class="divide-y divide-gray-100"></tbody>
+                        <tbody id="exam-stats-body" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
+
+            <div class="glass-card rounded-2xl p-5 fade-up">
+                <h3 class="font-semibold mb-3">Material Reading Summary</h3>
+                <div id="reading-summary" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div id="students-panel" class="hidden glass-card rounded-2xl p-5 fade-up">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold">Student Deep Insights</h3>
+                <span class="text-xs text-slate-500">Click a student row to see trend details</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="text-slate-500 border-b border-slate-200">
+                        <tr>
+                            <th class="text-left py-2">Student</th>
+                            <th class="text-left py-2">Avg Score</th>
+                            <th class="text-left py-2">Trend</th>
+                            <th class="text-left py-2">Study Hours</th>
+                            <th class="text-left py-2">Read Rate</th>
+                            <th class="text-left py-2">Material Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-insights-body" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
         </div>
     </main>
+</div>
+
+<div id="student-detail-modal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm p-4">
+    <div class="max-w-3xl mx-auto mt-8 glass-card rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="student-detail-title" class="font-semibold text-lg">Student Detail</h3>
+            <button onclick="closeStudentDetail()" class="text-slate-500 hover:text-black text-xl leading-none" aria-label="Close">&times;</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="glass-card rounded-xl p-4">
+                <h4 class="text-sm font-semibold mb-2">Score Trend</h4>
+                <canvas id="studentTrendChart" height="180"></canvas>
+            </div>
+            <div class="glass-card rounded-xl p-4">
+                <h4 class="text-sm font-semibold mb-2">Study Snapshot</h4>
+                <div id="student-detail-stats" class="space-y-2 text-sm text-slate-700"></div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -122,102 +219,333 @@ if (!user || (user.role !== 'lecturer' && user.role !== 'admin')) {
     window.location.href = '/login';
 }
 document.getElementById('user-name').textContent = `${user.first_name} ${user.last_name}`;
+const dropdownNameEl = document.getElementById('dropdown-name');
+const dropdownEmailEl = document.getElementById('dropdown-email');
+const dropdownRoleEl = document.getElementById('dropdown-role');
+const dropdownProfileCompleteEl = document.getElementById('dropdown-profile-complete');
+const dropdownPhoneEl = document.getElementById('dropdown-phone');
+const avatarEl = document.getElementById('user-avatar');
+
+if (dropdownNameEl) dropdownNameEl.textContent = `${user.first_name} ${user.last_name}`;
+if (dropdownEmailEl) dropdownEmailEl.textContent = user.email || '';
+if (dropdownRoleEl) {
+    const roleLabel = String(user.role || 'lecturer');
+    dropdownRoleEl.textContent = roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1);
+}
+if (dropdownProfileCompleteEl) dropdownProfileCompleteEl.textContent = `Profile ${user.profile_complete || 0}%`;
+if (dropdownPhoneEl) {
+    if (user.phone_number) {
+        dropdownPhoneEl.textContent = user.phone_number;
+        dropdownPhoneEl.classList.remove('hidden');
+    } else {
+        dropdownPhoneEl.classList.add('hidden');
+    }
+}
+if (avatarEl) {
+    if (user.profile_image) {
+        avatarEl.innerHTML = `<img src="/uploads/${user.profile_image}" class="w-full h-full object-cover rounded-full" alt="Avatar">`;
+    } else {
+        avatarEl.textContent = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'L';
+    }
+}
 
 let performanceChart = null;
+let trendChart = null;
+let studyHabitsChart = null;
+let studentTrendChart = null;
+let latestStudentRows = [];
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-panel').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.dropdown-chevron').forEach(c => { c.style.transform = ''; });
+}
+
+function toggleDropdown(name) {
+    const dd = document.getElementById('dropdown-' + name);
+    if (!dd) return;
+    const isOpen = dd.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        dd.classList.add('open');
+        const btn = dd.previousElementSibling || dd.closest('.relative')?.querySelector('button');
+        const chevron = btn ? btn.querySelector('.dropdown-chevron') : null;
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+function toggleMobileNav() {
+    const mobileNav = document.getElementById('mobile-nav');
+    if (!mobileNav) return;
+    const isOpen = mobileNav.classList.contains('open');
+    mobileNav.classList.toggle('open');
+    const h = document.getElementById('hamburger-icon');
+    const c = document.getElementById('close-icon');
+    if (h) h.classList.toggle('hidden', !isOpen);
+    if (c) c.classList.toggle('hidden', isOpen);
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#academics-dropdown') && !e.target.closest('#user-dropdown-wrap')) {
+        closeAllDropdowns();
+    }
+});
+
+function renderKpiCards(summary) {
+    const grid = document.getElementById('kpi-grid');
+    grid.classList.remove('hidden');
+    const cards = [
+        ['Students', summary.total_students],
+        ['Class Avg', `${summary.class_average_score}%`],
+        ['Pass Rate', `${summary.class_pass_rate}%`],
+        ['Avg Study Hrs', summary.average_study_hours],
+        ['At Risk', summary.at_risk_students],
+    ];
+    grid.innerHTML = cards.map((c, idx) => `
+        <div class="glass-card rounded-2xl p-4 fade-up" style="animation-delay:${idx * 60}ms">
+            <p class="text-xs text-slate-500 uppercase tracking-wide">${c[0]}</p>
+            <p class="text-2xl font-bold mt-1">${c[1]}</p>
+        </div>
+    `).join('');
+}
+
+function renderPerformanceChart(examStats) {
+    const ctx = document.getElementById('performanceChart');
+    if (performanceChart) performanceChart.destroy();
+    performanceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: examStats.map(e => e.exam_title),
+            datasets: [{
+                label: 'Average Score',
+                data: examStats.map(e => e.average_score),
+                backgroundColor: 'rgba(15,23,42,0.75)',
+                borderRadius: 8,
+            }, {
+                label: 'Pass Rate %',
+                data: examStats.map(e => e.pass_rate),
+                type: 'line',
+                borderColor: 'rgba(96,165,250,1)',
+                backgroundColor: 'rgba(96,165,250,0.2)',
+                tension: 0.35,
+            }],
+        },
+        options: {
+            animation: { duration: 900, easing: 'easeOutQuart' },
+            responsive: true,
+            plugins: { legend: { labels: { color: '#334155' } } },
+            scales: {
+                x: { ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.06)' } },
+                y: { ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.1)' }, beginAtZero: true, max: 100 },
+            },
+        },
+    });
+}
+
+function renderTrendChart(students) {
+    const trendCounts = { improving: 0, stable: 0, declining: 0 };
+    students.forEach(s => trendCounts[s.trend] = (trendCounts[s.trend] || 0) + 1);
+    const ctx = document.getElementById('trendChart');
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Improving', 'Stable', 'Declining'],
+            datasets: [{
+                data: [trendCounts.improving, trendCounts.stable, trendCounts.declining],
+                backgroundColor: ['#34d399', '#93c5fd', '#f87171'],
+                borderWidth: 0,
+            }],
+        },
+        options: {
+            animation: { animateScale: true, duration: 900 },
+            plugins: { legend: { labels: { color: '#334155' } } },
+        },
+    });
+}
+
+function renderStudyHabitsChart(students) {
+    const top = [...students].sort((a, b) => b.study_hours - a.study_hours).slice(0, 8);
+    const ctx = document.getElementById('studyHabitsChart');
+    if (studyHabitsChart) studyHabitsChart.destroy();
+    studyHabitsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: top.map(s => s.student_name),
+            datasets: [{
+                label: 'Study Hours',
+                data: top.map(s => s.study_hours),
+                backgroundColor: 'rgba(167,139,250,0.7)',
+                borderRadius: 8,
+            }],
+        },
+        options: {
+            animation: { duration: 1000, easing: 'easeOutCubic' },
+            plugins: { legend: { labels: { color: '#334155' } } },
+            scales: {
+                x: { ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.06)' } },
+                y: { ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.1)' }, beginAtZero: true },
+            },
+        },
+    });
+}
+
+function renderExamTable(examStats) {
+    const tbody = document.getElementById('exam-stats-body');
+    if (!examStats.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-neutral-500">No exam data yet.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = examStats.map(e => `
+        <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-2">${e.exam_title}</td>
+            <td class="py-2 text-slate-600">${e.total_submissions}</td>
+            <td class="py-2 text-slate-600">${e.average_score}</td>
+            <td class="py-2 text-slate-600">${e.pass_rate}%</td>
+        </tr>
+    `).join('');
+}
+
+function renderReadingSummary(summary) {
+    const container = document.getElementById('reading-summary');
+    if (!summary.length) {
+        container.innerHTML = '<div class="text-sm text-neutral-500">No reading data yet.</div>';
+        return;
+    }
+    container.innerHTML = summary.map(item => `
+        <div class="border border-slate-200 rounded-xl p-3 bg-slate-50">
+            <p class="text-sm font-medium truncate" title="${item.material_title}">${item.material_title}</p>
+            <p class="text-xs text-slate-500 mt-1">${item.students_read}/${item.students_total} students read (${item.read_rate}%)</p>
+        </div>
+    `).join('');
+}
+
+function renderStudentRows(students) {
+    latestStudentRows = students;
+    const panel = document.getElementById('students-panel');
+    const body = document.getElementById('student-insights-body');
+    panel.classList.remove('hidden');
+
+    if (!students.length) {
+        body.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-neutral-500">No student insights yet.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = students.map(s => `
+        <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="openStudentDetail(${s.student_id})">
+            <td class="py-2">${s.student_name}</td>
+            <td class="py-2 text-slate-600">${s.average_score}%</td>
+            <td class="py-2">
+                <span class="text-xs px-2 py-0.5 rounded-full ${s.trend === 'improving' ? 'bg-emerald-100 text-emerald-700' : s.trend === 'declining' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}">
+                    ${s.trend}
+                </span>
+            </td>
+            <td class="py-2 text-slate-600">${s.study_hours}</td>
+            <td class="py-2 text-slate-600">${s.read_rate}%</td>
+            <td class="py-2 text-slate-600">${s.avg_material_progress}%</td>
+        </tr>
+    `).join('');
+}
+
+function openStudentDetail(studentId) {
+    const student = latestStudentRows.find(s => s.student_id === studentId);
+    if (!student) return;
+
+    document.getElementById('student-detail-title').textContent = `${student.student_name} — Study & Performance`;
+    document.getElementById('student-detail-stats').innerHTML = `
+        <div class="flex justify-between"><span class="text-slate-500">Average Score</span><span>${student.average_score}%</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Exam Attempts</span><span>${student.exam_attempts}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Study Hours</span><span>${student.study_hours}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Materials Read</span><span>${student.materials_read}/${student.materials_total}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Read Rate</span><span>${student.read_rate}%</span></div>
+    `;
+
+    const labels = student.score_history.map(s => s.exam_title);
+    const values = student.score_history.map(s => s.score);
+    const ctx = document.getElementById('studentTrendChart');
+    if (studentTrendChart) studentTrendChart.destroy();
+    studentTrendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Score',
+                data: values,
+                borderColor: 'rgba(15,23,42,0.9)',
+                backgroundColor: 'rgba(15,23,42,0.1)',
+                tension: 0.35,
+                fill: true,
+            }],
+        },
+        options: {
+            animation: { duration: 700, easing: 'easeOutQuart' },
+            plugins: { legend: { labels: { color: '#334155' } } },
+            scales: {
+                x: { ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.06)' } },
+                y: { ticks: { color: '#475569' }, grid: { color: 'rgba(15,23,42,0.1)' }, beginAtZero: true, max: 100 },
+            },
+        },
+    });
+
+    document.getElementById('student-detail-modal').classList.remove('hidden');
+}
+
+function closeStudentDetail() {
+    document.getElementById('student-detail-modal').classList.add('hidden');
+}
 
 async function loadAnalytics() {
-    // Admin overview
-    if (user.role === 'admin') {
-        document.getElementById('admin-stats').classList.remove('hidden');
-        const resp = await AUTH.fetch('/api/analytics/admin/overview');
-        if (resp.ok) {
-            const data = await resp.json();
-            document.getElementById('stat-total-users').textContent = data.total_users;
-            document.getElementById('stat-total-students').textContent = data.total_students;
-            document.getElementById('stat-total-lecturers').textContent = data.total_lecturers;
-            document.getElementById('stat-total-courses').textContent = data.total_courses;
-            document.getElementById('stat-total-exams').textContent = data.total_exams;
-            document.getElementById('stat-total-submissions').textContent = data.total_submissions;
-            document.getElementById('stat-flagged').textContent = data.flagged_submissions;
-        }
+    if (user.role !== 'lecturer') {
+        document.getElementById('course-selector').innerHTML = '<div class="text-sm text-slate-500">Detailed lecturer analytics available for lecturer accounts.</div>';
+        return;
     }
 
-    // Load courses for selector
-    if (user.role === 'lecturer') {
-        const resp = await AUTH.fetch('/api/lecturer/courses');
-        if (resp.ok) {
-            const data = await resp.json();
-            const select = document.getElementById('course-select');
-            data.items.forEach(c => {
-                select.innerHTML += `<option value="${c.id}">${c.code} — ${c.title}</option>`;
-            });
-        }
-    }
+    const resp = await AUTH.fetch('/api/lecturer/courses');
+    if (!resp.ok) return;
+
+    const data = await resp.json();
+    const select = document.getElementById('course-select');
+    (data.items || []).forEach(c => {
+        select.innerHTML += `<option value="${c.id}">${c.code} — ${c.title}</option>`;
+    });
 }
 
 async function loadCourseAnalytics(courseId) {
     if (!courseId) return;
 
-    const resp = await AUTH.fetch(`/api/analytics/course/${courseId}`);
-    if (!resp.ok) return;
-    const data = await resp.json();
+    const [courseResp, insightsResp, readingResp] = await Promise.all([
+        AUTH.fetch(`/api/analytics/course/${courseId}`),
+        AUTH.fetch(`/api/analytics/course/${courseId}/student-insights`),
+        AUTH.fetch(`/api/analytics/course/${courseId}/materials-reading`),
+    ]);
 
-    // Show exam stats table
-    const tbody = document.getElementById('exam-stats-body');
-    document.getElementById('course-stats').classList.remove('hidden');
+    if (!courseResp.ok || !insightsResp.ok || !readingResp.ok) return;
 
-    if (data.exam_stats.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">No exam data yet.</td></tr>';
-        return;
-    }
+    const courseData = await courseResp.json();
+    const insightsData = await insightsResp.json();
+    const readingData = await readingResp.json();
 
-    tbody.innerHTML = data.exam_stats.map(e => `
-        <tr class="hover:bg-gray-50">
-            <td class="py-3 px-4 text-gray-800 font-medium">${e.exam_title}</td>
-            <td class="py-3 px-4 text-gray-600">${e.total_submissions}</td>
-            <td class="py-3 px-4 text-gray-600">${e.average_score}</td>
-            <td class="py-3 px-4 text-accent-600 font-medium">${e.highest_score}</td>
-            <td class="py-3 px-4 text-red-600 font-medium">${e.lowest_score}</td>
-            <td class="py-3 px-4">
-                <span class="text-sm font-medium ${e.pass_rate >= 70 ? 'text-accent-600' : e.pass_rate >= 50 ? 'text-yellow-600' : 'text-red-600'}">${e.pass_rate}%</span>
-            </td>
-        </tr>
-    `).join('');
+    document.getElementById('charts-grid').classList.remove('hidden');
+    document.getElementById('tables-grid').classList.remove('hidden');
 
-    // Draw chart
-    const ctx = document.getElementById('performanceChart');
-    ctx.classList.remove('hidden');
-    document.getElementById('no-chart-data').classList.add('hidden');
-
-    if (performanceChart) performanceChart.destroy();
-    performanceChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: data.exam_stats.map(e => e.exam_title),
-            datasets: [{
-                label: 'Average Score',
-                data: data.exam_stats.map(e => e.average_score),
-                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                borderRadius: 6,
-            }, {
-                label: 'Pass Rate %',
-                data: data.exam_stats.map(e => e.pass_rate),
-                backgroundColor: 'rgba(34, 197, 94, 0.7)',
-                borderRadius: 6,
-            }],
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'bottom' } },
-            scales: { y: { beginAtZero: true, max: 100 } },
-        },
+    renderKpiCards(insightsData.summary || {
+        total_students: 0,
+        class_average_score: 0,
+        class_pass_rate: 0,
+        average_study_hours: 0,
+        at_risk_students: 0,
     });
+
+    renderPerformanceChart(courseData.exam_stats || []);
+    renderTrendChart(insightsData.students || []);
+    renderStudyHabitsChart(insightsData.students || []);
+    renderExamTable(courseData.exam_stats || []);
+    renderReadingSummary(readingData.summary || []);
+    renderStudentRows(insightsData.students || []);
 }
 
 function goBack() {
     if (user.role === 'lecturer') window.location.href = '/lecturer/dashboard';
-    else if (user.role === 'admin') window.location.href = '/analytics';
-    else window.location.href = '/student/dashboard';
+    else window.location.href = '/login';
 }
 
 function logout() {
