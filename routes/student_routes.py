@@ -211,14 +211,13 @@ def get_available_exams():
         ).first()
         ed = exam.to_dict()
         ed['submission_status'] = sub.status if sub else None
-        # Hide score if grades not released
+        # Hide ALL scores until lecturer releases grades
         if sub and exam.grades_released:
             ed['total_score'] = sub.total_score
-        elif sub and sub.status == 'graded' and not exam.grades_released:
-            ed['submission_status'] = 'awaiting_release'
-            ed['total_score'] = None
         else:
-            ed['total_score'] = sub.total_score if sub else None
+            ed['total_score'] = None
+            if sub and sub.status in ('submitted', 'graded') and not exam.grades_released:
+                ed['submission_status'] = 'awaiting_release'
 
         # Compute exam availability status
         if exam.start_time and now < exam.start_time:
@@ -376,6 +375,8 @@ def get_results():
         exam = Exam.query.get(sub.exam_id)
         if not exam:
             continue
+        if not exam.grades_released:
+            continue
         course = Course.query.get(exam.course_id) if exam else None
         entry = {
             **sub.to_dict(),
@@ -384,11 +385,6 @@ def get_results():
             'total_marks': exam.total_marks,
             'course_title': course.title if course else None,
         }
-        # Hide scores until lecturer releases grades
-        if not exam.grades_released:
-            entry['total_score'] = None
-            entry['status'] = 'awaiting_release' if sub.status == 'graded' else sub.status
-            entry['is_graded'] = False
         results.append(entry)
     return jsonify({'results': results})
 
