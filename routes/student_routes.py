@@ -6,7 +6,7 @@ from database.models import (
 )
 from utils.security import role_required, get_identity
 from utils.helpers import paginate_query, save_uploaded_file, allowed_file
-from datetime import datetime
+from datetime import datetime, timedelta
 
 student_bp = Blueprint('student', __name__)
 
@@ -395,10 +395,27 @@ def get_results():
 
 # ──────────────── LIVE CLASSES ROUTES ────────────────
 
+def purge_expired_live_classes():
+    """Delete live classes that have already ended."""
+    now = datetime.now()
+    classes = LiveClass.query.all()
+    deleted = False
+
+    for live_class in classes:
+        duration = int(live_class.duration_minutes or 60)
+        class_end = live_class.scheduled_at + timedelta(minutes=duration)
+        if class_end <= now:
+            db.session.delete(live_class)
+            deleted = True
+
+    if deleted:
+        db.session.commit()
+
 @student_bp.route('/api/student/classes', methods=['GET'])
 @jwt_required()
 @role_required('student')
 def get_live_classes():
+    purge_expired_live_classes()
     identity = get_identity()
     enrolled = Enrollment.query.filter_by(student_id=identity['id']).all()
     course_ids = [e.course_id for e in enrolled]
@@ -410,14 +427,14 @@ def get_live_classes():
         LiveClass.course_id.in_(course_ids)
     ).order_by(LiveClass.scheduled_at.asc()).all()
 
-    now = datetime.utcnow()
+    now = datetime.now()
     result = []
     for c in classes:
         is_accessible = c.is_unlocked or (c.scheduled_at and c.scheduled_at <= now)
         course = Course.query.get(c.course_id)
         data = c.to_dict()
         data['course_title'] = course.title if course else None
-        data['course_code'] = course.course_code if course else None
+        data['course_code'] = course.code if course else None
         data['access_status'] = 'unlocked' if is_accessible else 'locked'
         if not is_accessible:
             data['meeting_link'] = None  # hide link when locked

@@ -526,6 +526,10 @@
         <div class="mb-6">
             <h2 class="text-2xl font-bold text-white">Live Classes</h2>
             <p class="text-sm text-neutral-500 mt-1">Scheduled meeting links from your lecturers</p>
+            <div id="classes-refresh-indicator" class="hidden mt-2 text-xs text-neutral-400 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-white/60 animate-pulse"></span>
+                Updating classes...
+            </div>
         </div>
         <div id="classes-list" class="space-y-4">
             <div class="text-center text-neutral-500">Loading classes...</div>
@@ -1262,13 +1266,20 @@ async function loadResourcesPage() {
 let classesCountdownInterval = null;
 async function loadClassesPage() {
     const container = document.getElementById('classes-list');
+    const refreshIndicator = document.getElementById('classes-refresh-indicator');
+    if (refreshIndicator) refreshIndicator.classList.remove('hidden');
     container.innerHTML = '<div class="text-center text-neutral-500">Loading classes...</div>';
     const resp = await AUTH.fetch('/api/student/classes');
-    if (!resp.ok) { container.innerHTML = '<div class="text-center text-neutral-400">Failed to load classes.</div>'; return; }
+    if (!resp.ok) {
+        container.innerHTML = '<div class="text-center text-neutral-400">Failed to load classes.</div>';
+        if (refreshIndicator) refreshIndicator.classList.add('hidden');
+        return;
+    }
     const data = await resp.json();
     const classes = data.classes || [];
     if (classes.length === 0) {
         container.innerHTML = '<div class="text-center py-12 text-neutral-500">No live classes scheduled for your courses.</div>';
+        if (refreshIndicator) refreshIndicator.classList.add('hidden');
         return;
     }
 
@@ -1323,6 +1334,7 @@ async function loadClassesPage() {
         html += '<div class="mb-8"><h3 class="text-lg font-semibold text-neutral-300 mb-3 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-500"></span> Upcoming</h3><div class="space-y-3">' + upcoming.map(renderClassCard).join('') + '</div></div>';
     }
     container.innerHTML = html;
+    if (refreshIndicator) refreshIndicator.classList.add('hidden');
 
     // Start countdown for locked classes
     if (classesCountdownInterval) clearInterval(classesCountdownInterval);
@@ -1346,7 +1358,11 @@ async function loadClassesPage() {
             parts.push(secs + 's');
             el.textContent = 'Unlocks in ' + parts.join(' ');
         });
-        if (needsRefresh) { clearInterval(classesCountdownInterval); loadClassesPage(); }
+        if (needsRefresh) {
+            if (refreshIndicator) refreshIndicator.classList.remove('hidden');
+            clearInterval(classesCountdownInterval);
+            loadClassesPage();
+        }
     }, 1000);
 }
 

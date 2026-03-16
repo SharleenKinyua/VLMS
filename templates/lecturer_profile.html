@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}Lecturer Profile — MindStack{% endblock %}
+
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; letter-spacing: -0.011em; }
+    .glass-nav-light { background: rgba(255, 255, 255, 0.85); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
+    .glass-nav-light.scrolled { background: rgba(255, 255, 255, 0.95); box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); }
+    .nav-pill { position: relative; transition: all 0.3s cubic-bezier(.4,0,.2,1); }
+    .nav-pill::after { content: ''; position: absolute; bottom: -2px; left: 50%; width: 0; height: 2px; background: #000; border-radius: 2px; transition: all 0.3s cubic-bezier(.4,0,.2,1); transform: translateX(-50%); }
+    .nav-pill:hover::after, .nav-pill.active::after { width: 60%; }
+    .nav-pill.active { color: #000 !important; }
+    .nav-pill:hover { transform: translateY(-1px); color: #000 !important; }
+    .dropdown-panel { opacity: 0; transform: translateY(-8px) scale(0.97); pointer-events: none; transition: all 0.25s cubic-bezier(.4,0,.2,1); }
+    .dropdown-panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+    .mobile-panel { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(.4,0,.2,1), opacity 0.25s ease; opacity: 0; }
+    .mobile-panel.open { max-height: 420px; opacity: 1; }
+    .nav-fade-in { animation: fadeUp 0.5s cubic-bezier(.4,0,.2,1) both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .nav-delay-1 { animation-delay: 0.05s; }
+    .nav-delay-2 { animation-delay: 0.1s; }
+    .nav-delay-3 { animation-delay: 0.15s; }
+    .nav-delay-4 { animation-delay: 0.2s; }
+    .nav-delay-5 { animation-delay: 0.25s; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-[#f5f5f5]">
+    {% set lecturer_active_page = 'profile' %}
+    {% include 'partials/lecturer_header.html' %}
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div id="profile-status" class="hidden rounded-xl border px-4 py-3 text-sm mb-5"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <section class="bg-white rounded-2xl border border-black/[0.06] p-6">
+                <h2 class="text-lg font-semibold text-black mb-4">Profile Summary</h2>
+                <div class="flex items-center gap-4">
+                    <div id="profile-initials" class="w-14 h-14 rounded-full bg-black text-white flex items-center justify-center text-lg font-bold">L</div>
+                    <div>
+                        <p id="profile-name" class="font-semibold text-black">Lecturer</p>
+                        <p id="profile-email" class="text-sm text-black/45"></p>
+                    </div>
+                </div>
+                <p id="profile-role" class="text-xs text-black/35 mt-4 uppercase tracking-wide">Role: Lecturer</p>
+                <p id="profile-completion" class="text-xs text-black/35 mt-1 uppercase tracking-wide">Profile completion: 0%</p>
+
+                <form id="avatar-form" class="mt-5 space-y-3" enctype="multipart/form-data">
+                    <label for="avatar-file" class="block text-sm font-medium text-black/70">Update profile image</label>
+                    <input id="avatar-file" type="file" accept="image/*" class="w-full text-sm text-black/60 border border-black/[0.08] rounded-xl px-3 py-2">
+                    <button type="submit" class="w-full text-sm bg-black text-white px-4 py-2 rounded-xl hover:bg-black/80 transition-all">Upload Image</button>
+                </form>
+            </section>
+
+            <section class="lg:col-span-2 space-y-6">
+                <div class="bg-white rounded-2xl border border-black/[0.06] p-6">
+                    <h2 class="text-lg font-semibold text-black mb-4">Edit Profile</h2>
+                    <form id="profile-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="first-name" class="block text-sm text-black/60 mb-1">First Name</label>
+                            <input id="first-name" type="text" class="w-full border border-black/[0.08] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black/10">
+                        </div>
+                        <div>
+                            <label for="last-name" class="block text-sm text-black/60 mb-1">Last Name</label>
+                            <input id="last-name" type="text" class="w-full border border-black/[0.08] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black/10">
+                        </div>
+                        <div>
+                            <label for="phone-number" class="block text-sm text-black/60 mb-1">Phone Number</label>
+                            <input id="phone-number" type="text" class="w-full border border-black/[0.08] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black/10">
+                        </div>
+                        <div class="flex items-end">
+                            <label class="flex items-center gap-2 text-sm text-black/60">
+                                <input id="share-contact" type="checkbox" class="accent-black">
+                                Share contact with students
+                            </label>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="bio" class="block text-sm text-black/60 mb-1">Bio</label>
+                            <textarea id="bio" rows="4" class="w-full border border-black/[0.08] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"></textarea>
+                        </div>
+                        <div class="md:col-span-2 flex justify-end">
+                            <button type="submit" class="inline-flex items-center gap-2 text-sm bg-black text-white px-4 py-2 rounded-xl hover:bg-black/80 transition-all">
+                                Save Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-black/[0.06] p-6">
+                    <h2 class="text-lg font-semibold text-black mb-4">Change Password</h2>
+                    <form id="password-form" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="old-password" class="block text-sm text-black/60 mb-1">Current Password</label>
+                            <input id="old-password" type="password" class="w-full border border-black/[0.08] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black/10">
+                        </div>
+                        <div>
+                            <label for="new-password" class="block text-sm text-black/60 mb-1">New Password</label>
+                            <input id="new-password" type="password" class="w-full border border-black/[0.08] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black/10">
+                        </div>
+                        <div>
+                            <label for="confirm-password" class="block text-sm text-black/60 mb-1">Confirm Password</label>
+                            <input id="confirm-password" type="password" class="w-full border border-black/[0.08] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black/10">
+                        </div>
+                        <div class="md:col-span-3 flex justify-end">
+                            <button type="submit" class="inline-flex items-center gap-2 text-sm bg-black text-white px-4 py-2 rounded-xl hover:bg-black/80 transition-all">Update Password</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let user = AUTH.getUser();
+if (!user || user.role !== 'lecturer') { window.location.href = '/login'; }
+
+function showStatus(message, isError = false) {
+    const status = document.getElementById('profile-status');
+    status.classList.remove('hidden', 'border-red-200', 'bg-red-50', 'text-red-600', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+    status.classList.add(isError ? 'border-red-200' : 'border-emerald-200');
+    status.classList.add(isError ? 'bg-red-50' : 'bg-emerald-50');
+    status.classList.add(isError ? 'text-red-600' : 'text-emerald-700');
+    status.textContent = message;
+    status.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setHeaderAvatar(profile, initials) {
+    const avatarEl = document.getElementById('user-avatar');
+    if (!avatarEl) return;
+    if (profile.profile_image) {
+        const imageSrc = `/uploads/${profile.profile_image}`;
+        avatarEl.innerHTML = `<img src="${imageSrc}" class="w-full h-full object-cover rounded-full" alt="Profile image">`;
+        const avatarImg = avatarEl.querySelector('img');
+        if (avatarImg) {
+            avatarImg.onerror = () => {
+                avatarEl.textContent = initials;
+            };
+        }
+    } else {
+        avatarEl.textContent = initials;
+    }
+}
+
+function setProfileSummaryAvatar(profile, initials) {
+    const summaryAvatarEl = document.getElementById('profile-initials');
+    if (!summaryAvatarEl) return;
+    if (profile.profile_image) {
+        const imageSrc = `/uploads/${profile.profile_image}`;
+        summaryAvatarEl.innerHTML = `<img src="${imageSrc}" class="w-full h-full object-cover rounded-full" alt="Profile image">`;
+        const summaryImg = summaryAvatarEl.querySelector('img');
+        if (summaryImg) {
+            summaryImg.onerror = () => {
+                summaryAvatarEl.textContent = initials;
+            };
+        }
+    } else {
+        summaryAvatarEl.textContent = initials;
+    }
+}
+
+function applyUserUI(profile) {
+    const displayName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Lecturer';
+    const initials = `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || 'L';
+
+    const userNameEl = document.getElementById('user-name');
+    const avatarEl = document.getElementById('user-avatar');
+    const dropdownNameEl = document.getElementById('dropdown-name');
+    const dropdownEmailEl = document.getElementById('dropdown-email');
+    const dropdownRoleEl = document.getElementById('dropdown-role');
+    const dropdownProfileCompleteEl = document.getElementById('dropdown-profile-complete');
+    const dropdownPhoneEl = document.getElementById('dropdown-phone');
+
+    if (userNameEl) userNameEl.textContent = displayName;
+    if (dropdownNameEl) dropdownNameEl.textContent = displayName;
+    if (dropdownEmailEl) dropdownEmailEl.textContent = profile.email || '';
+    if (avatarEl) setHeaderAvatar(profile, initials);
+
+    if (dropdownRoleEl) {
+        const roleLabel = (profile.role || 'lecturer');
+        dropdownRoleEl.textContent = roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1);
+    }
+
+    if (dropdownProfileCompleteEl) {
+        const completion = Number(profile.profile_complete || 0);
+        dropdownProfileCompleteEl.textContent = `Profile ${completion}%`;
+    }
+
+    if (dropdownPhoneEl) {
+        if (profile.phone_number) {
+            dropdownPhoneEl.textContent = profile.phone_number;
+            dropdownPhoneEl.classList.remove('hidden');
+        } else {
+            dropdownPhoneEl.textContent = '';
+            dropdownPhoneEl.classList.add('hidden');
+        }
+    }
+
+    document.getElementById('profile-name').textContent = displayName;
+    document.getElementById('profile-email').textContent = profile.email || '';
+    document.getElementById('profile-role').textContent = `Role: ${(profile.role || 'lecturer').toUpperCase()}`;
+    document.getElementById('profile-completion').textContent = `Profile completion: ${Number(profile.profile_complete || 0)}%`;
+    setProfileSummaryAvatar(profile, initials);
+
+    document.getElementById('first-name').value = profile.first_name || '';
+    document.getElementById('last-name').value = profile.last_name || '';
+    document.getElementById('phone-number').value = profile.phone_number || '';
+    document.getElementById('bio').value = profile.bio || '';
+    document.getElementById('share-contact').checked = !!profile.share_contact;
+}
+
+async function hydrateUserFromDatabase() {
+    if (user) applyUserUI(user);
+    try {
+        const resp = await AUTH.fetch('/api/auth/me');
+        if (!resp.ok) return;
+        const payload = await resp.json();
+        if (!payload.user) return;
+        user = payload.user;
+        AUTH.setUser(user);
+        applyUserUI(user);
+    } catch (error) {
+        console.error('Profile sync failed:', error);
+    }
+}
+
+function toggleMobileNav() {
+    const mobileNav = document.getElementById('mobile-nav');
+    const isOpen = mobileNav.classList.contains('open');
+    mobileNav.classList.toggle('open');
+    document.getElementById('hamburger-icon').classList.toggle('hidden', !isOpen);
+    document.getElementById('close-icon').classList.toggle('hidden', isOpen);
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-panel').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.dropdown-chevron').forEach(c => { c.style.transform = ''; });
+}
+
+function toggleDropdown(name) {
+    const dd = document.getElementById('dropdown-' + name);
+    const isOpen = dd.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        dd.classList.add('open');
+        const btn = dd.previousElementSibling || dd.closest('.relative').querySelector('button');
+        const chevron = btn ? btn.querySelector('.dropdown-chevron') : null;
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#academics-dropdown') && !e.target.closest('#user-dropdown-wrap')) {
+        closeAllDropdowns();
+    }
+});
+
+window.addEventListener('scroll', () => {
+    const nav = document.getElementById('main-nav');
+    if (window.scrollY > 10) nav.classList.add('scrolled');
+    else nav.classList.remove('scrolled');
+}, { passive: true });
+
+function logout() {
+    AUTH.fetch('/api/auth/logout', { method: 'POST' });
+    AUTH.clear();
+    window.location.href = '/login';
+}
+
+document.getElementById('profile-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+        first_name: document.getElementById('first-name').value.trim(),
+        last_name: document.getElementById('last-name').value.trim(),
+        phone_number: document.getElementById('phone-number').value.trim() || null,
+        bio: document.getElementById('bio').value.trim() || null,
+        share_contact: document.getElementById('share-contact').checked,
+    };
+
+    const resp = await AUTH.fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+        showStatus(data.error || 'Failed to update profile.', true);
+        return;
+    }
+
+    user = data.user;
+    AUTH.setUser(user);
+    applyUserUI(user);
+    showStatus('Profile updated successfully.');
+});
+
+document.getElementById('password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const oldPassword = document.getElementById('old-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+
+    if (newPassword !== confirmPassword) {
+        showStatus('New password and confirmation do not match.', true);
+        return;
+    }
+
+    const resp = await AUTH.fetch('/api/auth/change-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+        showStatus(data.error || 'Failed to change password.', true);
+        return;
+    }
+
+    document.getElementById('old-password').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-password').value = '';
+    showStatus('Password changed successfully.');
+});
+
+document.getElementById('avatar-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('avatar-file');
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showStatus('Select an image file first.', true);
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', fileInput.files[0]);
+
+    const resp = await AUTH.fetch('/api/auth/profile/image', {
+        method: 'POST',
+        body: formData
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+        showStatus(data.error || 'Failed to upload image.', true);
+        return;
+    }
+
+    user = data.user;
+    AUTH.setUser(user);
+    applyUserUI(user);
+    fileInput.value = '';
+    showStatus('Profile image updated successfully.');
+});
+
+hydrateUserFromDatabase();
+</script>
+{% endblock %}

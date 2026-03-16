@@ -1,0 +1,628 @@
+{% extends "base.html" %}
+{% block title %}Classes — MindStack{% endblock %}
+
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; letter-spacing: -0.011em; }
+    .glass-nav-light { background: rgba(255, 255, 255, 0.85); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
+    .glass-nav-light.scrolled { background: rgba(255, 255, 255, 0.95); box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); }
+    .nav-pill { position: relative; transition: all 0.3s cubic-bezier(.4,0,.2,1); }
+    .nav-pill::after { content: ''; position: absolute; bottom: -2px; left: 50%; width: 0; height: 2px; background: #000; border-radius: 2px; transition: all 0.3s cubic-bezier(.4,0,.2,1); transform: translateX(-50%); }
+    .nav-pill:hover::after, .nav-pill.active::after { width: 60%; }
+    .nav-pill.active { color: #000 !important; }
+    .nav-pill:hover { transform: translateY(-1px); color: #000 !important; }
+    .dropdown-panel { opacity: 0; transform: translateY(-8px) scale(0.97); pointer-events: none; transition: all 0.25s cubic-bezier(.4,0,.2,1); }
+    .dropdown-panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+    .mobile-panel { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(.4,0,.2,1), opacity 0.25s ease; opacity: 0; }
+    .mobile-panel.open { max-height: 420px; opacity: 1; }
+    .nav-fade-in { animation: fadeUp 0.5s cubic-bezier(.4,0,.2,1) both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .nav-delay-1 { animation-delay: 0.05s; }
+    .nav-delay-2 { animation-delay: 0.1s; }
+    .nav-delay-3 { animation-delay: 0.15s; }
+    .nav-delay-4 { animation-delay: 0.2s; }
+    .nav-delay-5 { animation-delay: 0.25s; }
+    .schedule-dropdown {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transform: translateY(-6px);
+        transition: max-height 0.35s cubic-bezier(.4,0,.2,1), opacity 0.25s ease, transform 0.25s ease;
+    }
+    .schedule-dropdown.open {
+        max-height: 1200px;
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-[#f5f5f5]">
+    {% set lecturer_active_page = 'classes' %}
+    {% include 'partials/lecturer_header.html' %}
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div id="classes-status" class="hidden rounded-xl border px-4 py-3 text-sm mb-5"></div>
+
+        <div class="bg-white rounded-2xl border border-black/[0.06] p-6 md:p-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-black tracking-tight">Classes</h1>
+                    <p class="text-sm text-black/45 mt-1">Manage scheduled and live classes here.</p>
+                </div>
+                <button id="schedule-toggle-btn" onclick="toggleScheduleForm()" class="inline-flex items-center justify-center gap-2 bg-black hover:bg-black/80 text-white font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm shadow-black/10">
+                    + Schedule Class
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                <section class="lg:col-span-2 rounded-2xl border border-black/[0.06] p-5 bg-[#fcfcfc]">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-base font-semibold text-black">Scheduled Classes</h2>
+                        <span class="text-xs text-black/35 uppercase tracking-wide">Visible by course</span>
+                    </div>
+                    <div id="classes-content" class="space-y-4">
+                        <div class="text-sm text-black/40">No classes scheduled yet.</div>
+                    </div>
+                </section>
+
+                <section id="schedule-card" class="schedule-dropdown rounded-2xl border border-black/[0.06] p-5 bg-[#fcfcfc] lg:sticky lg:top-24">
+                    <h2 class="text-base font-semibold text-black mb-4">Schedule a Class</h2>
+                    <div class="grid grid-cols-1 gap-4 mb-4">
+                        <div>
+                            <label for="class-course" class="block text-sm text-black/60 mb-1">Course</label>
+                            <select id="class-course" onchange="loadClassesForSelectedCourse()" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black bg-white"></select>
+                        </div>
+                        <div>
+                            <label for="class-title" class="block text-sm text-black/60 mb-1">Class title</label>
+                            <input type="text" id="class-title" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black" placeholder="e.g. Week 4 Live Session">
+                        </div>
+                        <div>
+                            <label for="class-link" class="block text-sm text-black/60 mb-1">Meeting link (https://...)</label>
+                            <input type="url" id="class-link" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black" placeholder="https://...">
+                        </div>
+                        <div>
+                            <label for="class-platform" class="block text-sm text-black/60 mb-1">Platform</label>
+                            <select id="class-platform" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black bg-white">
+                                <option value="zoom">Zoom</option>
+                                <option value="meet">Google Meet</option>
+                                <option value="teams">Microsoft Teams</option>
+                                <option value="custom">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="class-datetime" class="block text-sm text-black/60 mb-1">Date & time</label>
+                            <input type="datetime-local" id="class-datetime" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                            <p id="class-datetime-feedback" class="text-xs mt-1 text-black/40">Pick an available slot.</p>
+                        </div>
+                        <div>
+                            <label for="class-duration" class="block text-sm text-black/60 mb-1">Duration (minutes)</label>
+                            <input type="number" id="class-duration" min="5" value="60" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="class-description" class="block text-sm text-black/60 mb-1">Description (optional)</label>
+                        <textarea id="class-description" rows="3" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black" placeholder="e.g. We will cover chapter 5 and do Q&A."></textarea>
+                    </div>
+                    <div class="flex items-center gap-3 mt-3">
+                        <label class="flex items-center gap-2 text-sm text-black/50"><input type="checkbox" id="class-unlocked" class="accent-black"> Unlock immediately</label>
+                        <button id="cancel-edit-btn" onclick="resetClassForm()" class="hidden text-sm px-4 py-2 rounded-xl border border-black/15 text-black/60 hover:text-black hover:bg-black/[0.04] transition-all">Cancel</button>
+                        <button id="save-class-btn" onclick="createClass()" class="ml-auto text-sm bg-black text-white px-4 py-2 rounded-xl hover:bg-black/80 transition-all">+ Schedule Class</button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-black/[0.06]">
+        <div class="p-6 border-b border-black/[0.06]">
+            <h3 id="confirm-title" class="text-lg font-semibold text-black">Confirm Action</h3>
+            <p id="confirm-message" class="text-sm text-black/50 mt-2">Are you sure?</p>
+        </div>
+        <div class="p-4 flex justify-end gap-3 bg-black/[0.02] rounded-b-2xl">
+            <button id="confirm-cancel" class="px-4 py-2 text-sm text-black/50 hover:text-black font-medium transition-colors">Cancel</button>
+            <button id="confirm-ok" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all">Delete</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let user = AUTH.getUser();
+if (!user || user.role !== 'lecturer') { window.location.href = '/login'; }
+let currentCourseId = null;
+let allScheduledClasses = [];
+let editingClassId = null;
+let classCache = {};
+
+function setHeaderAvatar(profile, initials) {
+    const avatarEl = document.getElementById('user-avatar');
+    if (!avatarEl) return;
+    if (profile.profile_image) {
+        const imageSrc = `/uploads/${profile.profile_image}`;
+        avatarEl.innerHTML = `<img src="${imageSrc}" class="w-full h-full object-cover rounded-full" alt="Profile image">`;
+        const avatarImg = avatarEl.querySelector('img');
+        if (avatarImg) {
+            avatarImg.onerror = () => {
+                avatarEl.textContent = initials;
+            };
+        }
+    } else {
+        avatarEl.textContent = initials;
+    }
+}
+
+function applyUserUI(profile) {
+    const displayName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Lecturer';
+    const initials = `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || 'L';
+
+    const userNameEl = document.getElementById('user-name');
+    const avatarEl = document.getElementById('user-avatar');
+    const dropdownNameEl = document.getElementById('dropdown-name');
+    const dropdownEmailEl = document.getElementById('dropdown-email');
+    const dropdownRoleEl = document.getElementById('dropdown-role');
+    const dropdownProfileCompleteEl = document.getElementById('dropdown-profile-complete');
+    const dropdownPhoneEl = document.getElementById('dropdown-phone');
+
+    if (userNameEl) userNameEl.textContent = displayName;
+    if (dropdownNameEl) dropdownNameEl.textContent = displayName;
+    if (dropdownEmailEl) dropdownEmailEl.textContent = profile.email || '';
+    if (avatarEl) setHeaderAvatar(profile, initials);
+
+    if (dropdownRoleEl) {
+        const roleLabel = (profile.role || 'lecturer');
+        dropdownRoleEl.textContent = roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1);
+    }
+
+    if (dropdownProfileCompleteEl) {
+        const completion = Number(profile.profile_complete || 0);
+        dropdownProfileCompleteEl.textContent = `Profile ${completion}%`;
+    }
+
+    if (dropdownPhoneEl) {
+        if (profile.phone_number) {
+            dropdownPhoneEl.textContent = profile.phone_number;
+            dropdownPhoneEl.classList.remove('hidden');
+        } else {
+            dropdownPhoneEl.textContent = '';
+            dropdownPhoneEl.classList.add('hidden');
+        }
+    }
+}
+
+function showStatus(message, isError = false) {
+    const status = document.getElementById('classes-status');
+    status.classList.remove('hidden', 'border-red-200', 'bg-red-50', 'text-red-600', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+    status.classList.add(isError ? 'border-red-200' : 'border-emerald-200');
+    status.classList.add(isError ? 'bg-red-50' : 'bg-emerald-50');
+    status.classList.add(isError ? 'text-red-600' : 'text-emerald-700');
+    status.textContent = message;
+}
+
+function resetClassForm() {
+    editingClassId = null;
+    document.getElementById('class-title').value = '';
+    document.getElementById('class-link').value = '';
+    document.getElementById('class-datetime').value = '';
+    document.getElementById('class-duration').value = '60';
+    document.getElementById('class-description').value = '';
+    document.getElementById('class-unlocked').checked = false;
+    const saveBtn = document.getElementById('save-class-btn');
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    if (saveBtn) saveBtn.textContent = '+ Schedule Class';
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+}
+
+function startEditClass(classId) {
+    const classData = classCache[classId];
+    if (!classData) return;
+
+    editingClassId = Number(classData.id);
+    toggleScheduleForm(true);
+
+    if (classData.course_id) {
+        const courseSelect = document.getElementById('class-course');
+        courseSelect.value = String(classData.course_id);
+        currentCourseId = Number(classData.course_id);
+    }
+
+    document.getElementById('class-title').value = classData.title || '';
+    document.getElementById('class-link').value = classData.meeting_link || '';
+    document.getElementById('class-platform').value = classData.platform || 'zoom';
+    document.getElementById('class-datetime').value = classData.scheduled_at ? classData.scheduled_at.slice(0, 16) : '';
+    document.getElementById('class-duration').value = String(classData.duration_minutes || 60);
+    document.getElementById('class-description').value = classData.description || '';
+    document.getElementById('class-unlocked').checked = !!classData.is_unlocked;
+
+    const saveBtn = document.getElementById('save-class-btn');
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    if (saveBtn) saveBtn.textContent = 'Save Changes';
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
+    validateDateTimeSelection();
+}
+
+function toggleScheduleForm(forceOpen = null) {
+    const card = document.getElementById('schedule-card');
+    const btn = document.getElementById('schedule-toggle-btn');
+    if (!card || !btn) return;
+
+    const shouldOpen = forceOpen === null ? !card.classList.contains('open') : !!forceOpen;
+    card.classList.toggle('open', shouldOpen);
+    btn.textContent = shouldOpen ? 'Hide Schedule Form' : '+ Schedule Class';
+
+    if (shouldOpen) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function classWindow(startDate, durationMinutes) {
+    const safeDuration = Number(durationMinutes) > 0 ? Number(durationMinutes) : 60;
+    const start = new Date(startDate);
+    const end = new Date(start.getTime() + safeDuration * 60 * 1000);
+    return { start, end };
+}
+
+function findScheduleConflict(startDate, durationMinutes, ignoreClassId = null) {
+    const { start, end } = classWindow(startDate, durationMinutes);
+    return allScheduledClasses.find(existing => {
+        if (ignoreClassId !== null && Number(existing.id) === Number(ignoreClassId)) {
+            return false;
+        }
+        return existing.start < end && existing.end > start;
+    }) || null;
+}
+
+function validateDateTimeSelection() {
+    const dateTimeInput = document.getElementById('class-datetime');
+    const durationInput = document.getElementById('class-duration');
+    const feedbackEl = document.getElementById('class-datetime-feedback');
+    const dateTimeValue = dateTimeInput.value;
+    const durationValue = Number(durationInput.value || 60);
+
+    if (!dateTimeValue) {
+        dateTimeInput.setCustomValidity('');
+        feedbackEl.textContent = 'Pick an available slot.';
+        feedbackEl.className = 'text-xs mt-1 text-black/40';
+        return null;
+    }
+
+    const conflict = findScheduleConflict(dateTimeValue, durationValue, editingClassId);
+    if (conflict) {
+        dateTimeInput.setCustomValidity('Selected time collides with another class schedule.');
+        feedbackEl.textContent = `Unavailable: overlaps with "${conflict.title}" (${conflict.courseCode}) from ${conflict.start.toLocaleString()} to ${conflict.end.toLocaleString()}.`;
+        feedbackEl.className = 'text-xs mt-1 text-red-500';
+        return conflict;
+    }
+
+    dateTimeInput.setCustomValidity('');
+    feedbackEl.textContent = 'Available slot.';
+    feedbackEl.className = 'text-xs mt-1 text-emerald-600';
+    return null;
+}
+
+async function refreshAllScheduledClasses() {
+    const coursesResp = await AUTH.fetch('/api/lecturer/courses');
+    if (!coursesResp.ok) return;
+
+    const coursesData = await coursesResp.json();
+    const courses = coursesData.items || [];
+    const classResponses = await Promise.all(
+        courses.map(async (course) => {
+            const resp = await AUTH.fetch(`/api/lecturer/courses/${course.id}/classes`);
+            if (!resp.ok) return [];
+            const payload = await resp.json();
+            const classes = payload.classes || [];
+            return classes.map(cls => {
+                const duration = Number(cls.duration_minutes || 60);
+                const start = new Date(cls.scheduled_at);
+                const end = new Date(start.getTime() + duration * 60 * 1000);
+                return {
+                    id: cls.id,
+                    title: cls.title,
+                    courseCode: course.code,
+                    start,
+                    end
+                };
+            });
+        })
+    );
+
+    allScheduledClasses = classResponses.flat();
+    validateDateTimeSelection();
+}
+
+function showConfirmModal({ title = 'Confirm Action', message = 'Are you sure?', confirmText = 'Confirm', confirmClass = 'bg-red-600 hover:bg-red-700 text-white' } = {}) {
+    const modal = document.getElementById('confirm-modal');
+    const titleEl = document.getElementById('confirm-title');
+    const messageEl = document.getElementById('confirm-message');
+    const okBtn = document.getElementById('confirm-ok');
+    const cancelBtn = document.getElementById('confirm-cancel');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    okBtn.textContent = confirmText;
+    okBtn.className = `px-4 py-2 text-sm font-semibold rounded-xl transition-all ${confirmClass}`;
+
+    modal.classList.remove('hidden');
+
+    return new Promise((resolve) => {
+        const cleanup = () => {
+            modal.classList.add('hidden');
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            modal.onclick = null;
+        };
+
+        okBtn.onclick = () => {
+            cleanup();
+            resolve(true);
+        };
+
+        cancelBtn.onclick = () => {
+            cleanup();
+            resolve(false);
+        };
+
+        modal.onclick = (event) => {
+            if (event.target === modal) {
+                cleanup();
+                resolve(false);
+            }
+        };
+    });
+}
+
+async function hydrateUserFromDatabase() {
+    if (user) applyUserUI(user);
+    try {
+        const resp = await AUTH.fetch('/api/auth/me');
+        if (!resp.ok) return;
+        const payload = await resp.json();
+        if (!payload.user) return;
+        user = payload.user;
+        AUTH.setUser(user);
+        applyUserUI(user);
+    } catch (error) {
+        console.error('Profile sync failed:', error);
+    }
+}
+
+hydrateUserFromDatabase();
+
+function toggleMobileNav() {
+    const mobileNav = document.getElementById('mobile-nav');
+    const isOpen = mobileNav.classList.contains('open');
+    mobileNav.classList.toggle('open');
+    document.getElementById('hamburger-icon').classList.toggle('hidden', !isOpen);
+    document.getElementById('close-icon').classList.toggle('hidden', isOpen);
+}
+
+function toggleDropdown(name) {
+    const dd = document.getElementById('dropdown-' + name);
+    const isOpen = dd.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        dd.classList.add('open');
+        const btn = dd.previousElementSibling || dd.closest('.relative').querySelector('button');
+        const chevron = btn ? btn.querySelector('.dropdown-chevron') : null;
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-panel').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.dropdown-chevron').forEach(c => { c.style.transform = ''; });
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#academics-dropdown') && !e.target.closest('#user-dropdown-wrap')) {
+        closeAllDropdowns();
+    }
+});
+
+window.addEventListener('scroll', () => {
+    const nav = document.getElementById('main-nav');
+    if (window.scrollY > 10) nav.classList.add('scrolled');
+    else nav.classList.remove('scrolled');
+}, { passive: true });
+
+function logout() {
+    AUTH.fetch('/api/auth/logout', { method: 'POST' });
+    AUTH.clear();
+    window.location.href = '/login';
+}
+
+async function loadCoursesAndInitialize() {
+    const courseSelect = document.getElementById('class-course');
+    const resp = await AUTH.fetch('/api/lecturer/courses');
+    if (!resp.ok) {
+        showStatus('Failed to load courses.', true);
+        document.getElementById('classes-content').innerHTML = '<div class="text-sm text-red-500">Unable to load classes because courses failed to load.</div>';
+        return;
+    }
+
+    const data = await resp.json();
+    const courses = data.items || [];
+    if (courses.length === 0) {
+        courseSelect.innerHTML = '<option value="">No courses available</option>';
+        currentCourseId = null;
+        document.getElementById('classes-content').innerHTML = '<div class="text-sm text-black/40">Create a course first before scheduling classes.</div>';
+        return;
+    }
+
+    courseSelect.innerHTML = courses.map(c => `<option value="${c.id}">${c.code} — ${c.title}</option>`).join('');
+    currentCourseId = Number(courseSelect.value || courses[0].id);
+    await refreshAllScheduledClasses();
+    await loadClassesForSelectedCourse();
+}
+
+async function loadClassesForSelectedCourse() {
+    const courseSelect = document.getElementById('class-course');
+    if (courseSelect.value) {
+        currentCourseId = Number(courseSelect.value);
+    }
+
+    const container = document.getElementById('classes-content');
+    container.innerHTML = '<div class="text-sm text-black/40">Loading classes...</div>';
+
+    const coursesResp = await AUTH.fetch('/api/lecturer/courses');
+    if (!coursesResp.ok) {
+        container.innerHTML = '<div class="text-sm text-red-500">Failed to load classes.</div>';
+        return;
+    }
+
+    const coursesData = await coursesResp.json();
+    const courses = coursesData.items || [];
+
+    const classResponses = await Promise.all(courses.map(async (course) => {
+        const resp = await AUTH.fetch(`/api/lecturer/courses/${course.id}/classes`);
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return (data.classes || []).map(c => ({ ...c, courseCode: course.code, courseTitle: course.title }));
+    }));
+
+    const classes = classResponses.flat().sort((a, b) => {
+        const aTime = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
+        const bTime = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
+        return aTime - bTime;
+    });
+
+    classCache = {};
+    classes.forEach(cls => {
+        classCache[cls.id] = cls;
+    });
+
+    if (classes.length === 0) {
+        container.innerHTML = '<div class="text-sm text-black/40">No classes scheduled yet.</div>';
+        return;
+    }
+
+    container.innerHTML = classes.map(c => {
+        const sched = c.scheduled_at ? new Date(c.scheduled_at) : null;
+        const platformLabel = c.platform ? c.platform.charAt(0).toUpperCase() + c.platform.slice(1) : 'Custom';
+        return `
+            <div class="border border-black/[0.06] rounded-xl p-4">
+                <div class="flex justify-between items-start gap-3">
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h5 class="font-medium text-black">${c.title}</h5>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-black/[0.04] text-black/60">${c.courseCode} — ${c.courseTitle}</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full ${c.is_unlocked ? 'bg-black/5 text-black/60' : 'bg-black/[0.04] text-black/50'}">${c.is_unlocked ? 'Unlocked' : 'Locked'}</span>
+                            <span class="text-xs text-black/30">${platformLabel}</span>
+                        </div>
+                        <p class="text-sm text-black/40 mt-1">${sched ? sched.toLocaleString() : 'No date'} • ${c.duration_minutes} min</p>
+                        ${c.description ? `<p class="text-sm text-black/35 mt-1">${c.description}</p>` : ''}
+                        <a href="${c.meeting_link}" target="_blank" rel="noopener noreferrer" class="text-xs text-black/50 hover:text-black hover:underline mt-1 inline-block transition-colors">${c.meeting_link}</a>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="startEditClass(${c.id})" class="text-xs px-3 py-1.5 rounded-lg bg-black/[0.04] text-black/60 hover:bg-black/[0.08]">Edit</button>
+                        <button onclick="toggleClassLock(${c.id})" class="text-xs px-3 py-1.5 rounded-lg ${c.is_unlocked ? 'bg-black/[0.04] text-black/50 hover:bg-black/[0.08]' : 'bg-black/5 text-black/60 hover:bg-black/10'}">${c.is_unlocked ? 'Lock' : 'Unlock'}</button>
+                        <button onclick="deleteClass(${c.id})" class="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function createClass() {
+    if (!currentCourseId) {
+        showStatus('Select a course first.', true);
+        return;
+    }
+
+    const title = document.getElementById('class-title').value.trim();
+    const link = document.getElementById('class-link').value.trim();
+    const platform = document.getElementById('class-platform').value;
+    const datetime = document.getElementById('class-datetime').value;
+    const duration = parseInt(document.getElementById('class-duration').value, 10) || 60;
+    const description = document.getElementById('class-description').value.trim();
+    const unlocked = document.getElementById('class-unlocked').checked;
+
+    if (!title || !link || !datetime) {
+        showStatus('Title, meeting link, and date/time are required.', true);
+        return;
+    }
+
+    const scheduleConflict = validateDateTimeSelection();
+    if (scheduleConflict) {
+        showStatus('Selected schedule collides with an existing class. Choose another time.', true);
+        return;
+    }
+
+    const isEditing = !!editingClassId;
+    const endpoint = isEditing
+        ? `/api/lecturer/classes/${editingClassId}`
+        : `/api/lecturer/courses/${currentCourseId}/classes`;
+
+    const resp = await AUTH.fetch(endpoint, {
+        method: isEditing ? 'PUT' : 'POST',
+        body: JSON.stringify({
+            title,
+            meeting_link: link,
+            platform,
+            scheduled_at: datetime,
+            duration_minutes: duration,
+            description: description || null,
+            is_unlocked: unlocked
+        })
+    });
+
+    const payload = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+        showStatus(payload.error || 'Failed to schedule class.', true);
+        return;
+    }
+
+    showStatus(isEditing ? 'Class updated successfully.' : 'Class scheduled successfully.');
+    resetClassForm();
+    toggleScheduleForm(false);
+    await refreshAllScheduledClasses();
+    await loadClassesForSelectedCourse();
+}
+
+async function toggleClassLock(classId) {
+    const resp = await AUTH.fetch(`/api/lecturer/classes/${classId}/toggle-lock`, { method: 'POST' });
+    if (!resp.ok) {
+        const payload = await resp.json().catch(() => ({}));
+        showStatus(payload.error || 'Failed to update class lock.', true);
+        return;
+    }
+    await loadClassesForSelectedCourse();
+}
+
+async function deleteClass(classId) {
+    const confirmed = await showConfirmModal({
+        title: 'Delete Class',
+        message: 'Delete this class?',
+        confirmText: 'Delete Class',
+        confirmClass: 'bg-red-600 hover:bg-red-700 text-white'
+    });
+    if (!confirmed) return;
+
+    const resp = await AUTH.fetch(`/api/lecturer/classes/${classId}`, { method: 'DELETE' });
+    if (!resp.ok) {
+        const payload = await resp.json().catch(() => ({}));
+        showStatus(payload.error || 'Failed to delete class.', true);
+        return;
+    }
+
+    showStatus('Class deleted successfully.');
+    await refreshAllScheduledClasses();
+    await loadClassesForSelectedCourse();
+}
+
+document.getElementById('class-datetime').addEventListener('change', validateDateTimeSelection);
+document.getElementById('class-duration').addEventListener('input', validateDateTimeSelection);
+
+loadCoursesAndInitialize();
+</script>
+{% endblock %}

@@ -21,6 +21,20 @@ def dashboard():
     return render_template('lecturer_panel.html')
 
 
+@lecturer_bp.route('/lecturer/classes')
+@jwt_required()
+@role_required('lecturer')
+def classes_page():
+    return render_template('classes.html')
+
+
+@lecturer_bp.route('/lecturer/profile')
+@jwt_required()
+@role_required('lecturer')
+def profile_page():
+    return render_template('lecturer_profile.html')
+
+
 # ──────────────── COURSE MANAGEMENT ────────────────
 
 @lecturer_bp.route('/api/lecturer/courses', methods=['GET'])
@@ -252,6 +266,32 @@ def get_materials(course_id):
     return jsonify({'materials': [m.to_dict() for m in materials]})
 
 
+@lecturer_bp.route('/api/lecturer/materials/<int:material_id>', methods=['DELETE'])
+@jwt_required()
+@role_required('lecturer')
+def delete_material(material_id):
+    identity = get_identity()
+    material = Material.query.get(material_id)
+    if not material:
+        return jsonify({'error': 'Material not found'}), 404
+
+    course = Course.query.filter_by(id=material.course_id, lecturer_id=identity['id']).first()
+    if not course:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    abs_path = os.path.join(current_app.config['UPLOAD_FOLDER'], material.file_path)
+    db.session.delete(material)
+    db.session.commit()
+
+    try:
+        if os.path.exists(abs_path):
+            os.remove(abs_path)
+    except Exception:
+        pass
+
+    return jsonify({'message': 'Material deleted'})
+
+
 # ──────────────── EXAM MANAGEMENT ────────────────
 
 @lecturer_bp.route('/api/lecturer/courses/<int:course_id>/exams', methods=['POST'])
@@ -375,6 +415,24 @@ def release_grades(exam_id):
         'grades_released': exam.grades_released,
         'exam': exam.to_dict()
     })
+
+
+@lecturer_bp.route('/api/lecturer/exams/<int:exam_id>', methods=['DELETE'])
+@jwt_required()
+@role_required('lecturer')
+def delete_exam(exam_id):
+    identity = get_identity()
+    exam = Exam.query.get(exam_id)
+    if not exam:
+        return jsonify({'error': 'Exam not found'}), 404
+
+    course = Course.query.filter_by(id=exam.course_id, lecturer_id=identity['id']).first()
+    if not course:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    db.session.delete(exam)
+    db.session.commit()
+    return jsonify({'message': 'Exam deleted'})
 
 
 @lecturer_bp.route('/api/lecturer/courses/<int:course_id>/exams', methods=['GET'])
@@ -673,10 +731,27 @@ def get_enrolled_students(course_id):
 
 # ──────────────── LIVE CLASSES ────────────────
 
+def purge_expired_live_classes():
+    """Delete live classes that have already ended."""
+    now = datetime.now()
+    classes = LiveClass.query.all()
+    deleted = False
+
+    for live_class in classes:
+        duration = int(live_class.duration_minutes or 60)
+        class_end = live_class.scheduled_at + timedelta(minutes=duration)
+        if class_end <= now:
+            db.session.delete(live_class)
+            deleted = True
+
+    if deleted:
+        db.session.commit()
+
 @lecturer_bp.route('/api/lecturer/courses/<int:course_id>/classes', methods=['GET'])
 @jwt_required()
 @role_required('lecturer')
 def get_live_classes(course_id):
+    purge_expired_live_classes()
     identity = get_identity()
     course = Course.query.filter_by(id=course_id, lecturer_id=identity['id']).first()
     if not course:
@@ -689,6 +764,7 @@ def get_live_classes(course_id):
 @jwt_required()
 @role_required('lecturer')
 def create_live_class(course_id):
+    purge_expired_live_classes()
     identity = get_identity()
     course = Course.query.filter_by(id=course_id, lecturer_id=identity['id']).first()
     if not course:
@@ -698,14 +774,43 @@ def create_live_class(course_id):
     if not data.get('title') or not data.get('meeting_link') or not data.get('scheduled_at'):
         return jsonify({'error': 'Title, meeting link, and scheduled time are required'}), 400
 
+    scheduled_at = datetime.fromisoformat(data['scheduled_at'])
+    duration_minutes = int(data.get('duration_minutes', 60) or 60)
+    if duration_minutes <= 0:
+        return jsonify({'error': 'Duration must be greater than 0 minutes'}), 400
+
+    new_start = scheduled_at
+    new_end = scheduled_at + timedelta(minutes=duration_minutes)
+
+    potential_conflicts = (
+        db.session.query(LiveClass, Course)
+        .join(Course, LiveClass.course_id == Course.id)
+        .filter(LiveClass.scheduled_at < new_end)
+        .all()
+    )
+
+    for existing_class, existing_course in potential_conflicts:
+        existing_duration = int(existing_class.duration_minutes or 60)
+        existing_start = existing_class.scheduled_at
+        existing_end = existing_start + timedelta(minutes=existing_duration)
+
+        if existing_end > new_start:
+            return jsonify({
+                'error': (
+                    f"Schedule conflict with existing class "
+                    f"('{existing_class.title}' in {existing_course.code}) at "
+                    f"{existing_start.strftime('%Y-%m-%d %H:%M')}."
+                )
+            }), 409
+
     live_class = LiveClass(
         course_id=course_id,
         title=data['title'],
         description=data.get('description', ''),
         meeting_link=data['meeting_link'],
         platform=data.get('platform', 'zoom'),
-        scheduled_at=datetime.fromisoformat(data['scheduled_at']),
-        duration_minutes=data.get('duration_minutes', 60),
+        scheduled_at=scheduled_at,
+        duration_minutes=duration_minutes,
         is_unlocked=data.get('is_unlocked', False),
     )
     db.session.add(live_class)
@@ -717,6 +822,7 @@ def create_live_class(course_id):
 @jwt_required()
 @role_required('lecturer')
 def toggle_class_lock(class_id):
+    purge_expired_live_classes()
     identity = get_identity()
     live_class = LiveClass.query.get(class_id)
     if not live_class:
@@ -729,10 +835,71 @@ def toggle_class_lock(class_id):
     return jsonify({'message': 'Lock toggled', 'is_unlocked': live_class.is_unlocked})
 
 
+@lecturer_bp.route('/api/lecturer/classes/<int:class_id>', methods=['PUT'])
+@jwt_required()
+@role_required('lecturer')
+def update_live_class(class_id):
+    purge_expired_live_classes()
+    identity = get_identity()
+    live_class = LiveClass.query.get(class_id)
+    if not live_class:
+        return jsonify({'error': 'Class not found'}), 404
+
+    owned_course = Course.query.filter_by(id=live_class.course_id, lecturer_id=identity['id']).first()
+    if not owned_course:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    if not data.get('title') or not data.get('meeting_link') or not data.get('scheduled_at'):
+        return jsonify({'error': 'Title, meeting link, and scheduled time are required'}), 400
+
+    scheduled_at = datetime.fromisoformat(data['scheduled_at'])
+    duration_minutes = int(data.get('duration_minutes', 60) or 60)
+    if duration_minutes <= 0:
+        return jsonify({'error': 'Duration must be greater than 0 minutes'}), 400
+
+    new_start = scheduled_at
+    new_end = scheduled_at + timedelta(minutes=duration_minutes)
+
+    potential_conflicts = (
+        db.session.query(LiveClass, Course)
+        .join(Course, LiveClass.course_id == Course.id)
+        .filter(LiveClass.id != class_id)
+        .filter(LiveClass.scheduled_at < new_end)
+        .all()
+    )
+
+    for existing_class, existing_course in potential_conflicts:
+        existing_duration = int(existing_class.duration_minutes or 60)
+        existing_start = existing_class.scheduled_at
+        existing_end = existing_start + timedelta(minutes=existing_duration)
+
+        if existing_end > new_start:
+            return jsonify({
+                'error': (
+                    f"Schedule conflict with existing class "
+                    f"('{existing_class.title}' in {existing_course.code}) at "
+                    f"{existing_start.strftime('%Y-%m-%d %H:%M')}."
+                )
+            }), 409
+
+    live_class.title = data['title']
+    live_class.description = data.get('description', '')
+    live_class.meeting_link = data['meeting_link']
+    live_class.platform = data.get('platform', 'zoom')
+    live_class.scheduled_at = scheduled_at
+    live_class.duration_minutes = duration_minutes
+    live_class.is_unlocked = data.get('is_unlocked', False)
+
+    db.session.commit()
+    return jsonify({'message': 'Class updated', 'class': live_class.to_dict()})
+
+
 @lecturer_bp.route('/api/lecturer/classes/<int:class_id>', methods=['DELETE'])
 @jwt_required()
 @role_required('lecturer')
 def delete_live_class(class_id):
+    purge_expired_live_classes()
     identity = get_identity()
     live_class = LiveClass.query.get(class_id)
     if not live_class:
