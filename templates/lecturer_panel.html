@@ -1179,6 +1179,8 @@ const ASSESSMENT_LABELS = {
     main_exam: 'Main Exam',
 };
 
+const EXAM_TYPE_ORDER = ['cat1', 'cat2', 'assignment', 'main_exam'];
+
 function formatAssessmentType(exam) {
     const type = exam.assessment_type || exam.exam_type;
     if (ASSESSMENT_LABELS[type]) return ASSESSMENT_LABELS[type];
@@ -1200,12 +1202,56 @@ function applyExamTypeDefaults() {
     passMarksEl.value = Math.ceil(total * 0.5);
 }
 
+function getAssessmentTypeFromExam(exam) {
+    const type = exam.assessment_type || exam.exam_type;
+    if (type === 'quiz') return 'cat1';
+    if (type === 'midterm') return 'cat2';
+    if (type === 'final') return 'main_exam';
+    return type;
+}
+
+function applyExamTypeOptions(exams) {
+    const typeEl = document.getElementById('exam-type');
+    if (!typeEl) return;
+
+    const currentValue = typeEl.value;
+    const existingTypes = new Set((exams || []).map(getAssessmentTypeFromExam));
+
+    typeEl.innerHTML = EXAM_TYPE_ORDER
+        .filter(type => {
+            if (type === 'cat1' || type === 'cat2') return !existingTypes.has(type);
+            return true;
+        })
+        .map(type => `<option value="${type}">${ASSESSMENT_LABELS[type] || type}</option>`)
+        .join('');
+
+    const canKeepCurrentValue = [...typeEl.options].some(option => option.value === currentValue);
+    if (canKeepCurrentValue) {
+        typeEl.value = currentValue;
+    } else if (typeEl.options.length > 0) {
+        typeEl.selectedIndex = 0;
+    }
+
+    applyExamTypeDefaults();
+}
+
+async function refreshExamTypeOptions(courseId) {
+    if (!courseId) return;
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${courseId}/exams`);
+    if (!resp.ok) {
+        applyExamTypeOptions([]);
+        return;
+    }
+    const data = await resp.json();
+    applyExamTypeOptions(data.exams || []);
+}
+
 async function loadExams() {
     const container = document.getElementById('tab-content');
     container.innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <h4 class="font-medium text-black">Exams</h4>
-            <button onclick="document.getElementById('create-exam-modal').classList.remove('hidden')" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
+            <button onclick="openExamGenerator(currentCourseId)" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
         </div>
         <p class="text-black/30 text-sm">Loading exams...</p>
     `;
@@ -1216,7 +1262,7 @@ async function loadExams() {
     container.innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <h4 class="font-medium text-black">Exams (${exams.length})</h4>
-            <button onclick="document.getElementById('create-exam-modal').classList.remove('hidden')" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
+            <button onclick="openExamGenerator(currentCourseId)" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
         </div>
         ${exams.length === 0 ? '<p class="text-black/30 text-sm">No exams yet. Click &quot;Generate Exam&quot; to auto-create from course materials.</p>' : `
         <div class="space-y-3">
@@ -1260,8 +1306,13 @@ async function loadExams() {
     `;
 }
 
-function openExamGenerator(courseId) {
-    currentCourseId = courseId;
+async function openExamGenerator(courseId) {
+    currentCourseId = courseId || currentCourseId;
+    if (!currentCourseId) {
+        alert('Select a course first.');
+        return;
+    }
+    await refreshExamTypeOptions(currentCourseId);
     document.getElementById('create-exam-modal').classList.remove('hidden');
 }
 

@@ -18,6 +18,13 @@ ASSESSMENT_TOTAL_MARKS = {
     'main_exam': 70,
 }
 
+ASSESSMENT_LABELS = {
+    'cat1': 'CAT 1',
+    'cat2': 'CAT 2',
+    'assignment': 'Assignment',
+    'main_exam': 'Main Exam',
+}
+
 
 def map_assessment_type_to_exam_type(assessment_type):
     mapping = {
@@ -58,6 +65,22 @@ def build_description_with_assessment_marker(description, assessment_type):
         if end != -1:
             base = base[end + 1:].strip()
     return f'{marker} {base}'.strip()
+
+
+def get_existing_assessment_types(course_id):
+    exams = Exam.query.filter_by(course_id=course_id).all()
+    return {infer_assessment_type(exam) for exam in exams}
+
+
+def validate_assessment_type_availability(course_id, assessment_type):
+    if assessment_type not in {'cat1', 'cat2'}:
+        return None
+
+    existing_assessment_types = get_existing_assessment_types(course_id)
+    if assessment_type in existing_assessment_types:
+        return f"{ASSESSMENT_LABELS[assessment_type]} is already done for this course."
+
+    return None
 
 
 # ──────────────── PAGE ROUTES ────────────────
@@ -356,6 +379,10 @@ def create_exam(course_id):
     if assessment_type not in ASSESSMENT_TOTAL_MARKS:
         assessment_type = 'cat1'
 
+    assessment_error = validate_assessment_type_availability(course_id, assessment_type)
+    if assessment_error:
+        return jsonify({'error': assessment_error}), 400
+
     mapped_exam_type = map_assessment_type_to_exam_type(assessment_type)
     total_marks = data.get('total_marks', ASSESSMENT_TOTAL_MARKS[assessment_type])
     duration = data.get('duration_minutes', 60)
@@ -528,6 +555,11 @@ def generate_exam_from_materials(course_id):
     assessment_type = (data.get('assessment_type') or '').lower()
     if assessment_type not in ASSESSMENT_TOTAL_MARKS:
         assessment_type = 'cat1'
+
+    assessment_error = validate_assessment_type_availability(course_id, assessment_type)
+    if assessment_error:
+        return jsonify({'error': assessment_error}), 400
+
     exam_type = map_assessment_type_to_exam_type(assessment_type)
     question_types = data.get('question_types', ['mcq', 'short_answer'])
 

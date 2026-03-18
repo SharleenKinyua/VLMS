@@ -1184,25 +1184,132 @@ async function loadGradesPage() {
         return { letter: 'F', color: 'text-neutral-500 bg-white/5' };
     }
 
-    tbody.innerHTML = results.map(r => {
-        const isAwaiting = r.status === 'awaiting_release';
-        const pct = r.total_marks && r.total_score != null ? Math.round((r.total_score / r.total_marks) * 100) : null;
-        const g = pct != null ? letterGrade(pct) : { letter: '-', color: 'text-neutral-500 bg-white/10' };
-        const statusBadge = isAwaiting
-            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">Awaiting Release</span>'
-            : r.status === 'graded'
-            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">Graded</span>'
-            : r.status === 'submitted'
-            ? '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Pending</span>'
-            : '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">' + (r.status || '-') + '</span>';
+    function isGroupedAssessmentEntry(r) {
+        const title = String(r.exam_title || '').toLowerCase();
+        const type = String(r.exam_type || '').toLowerCase();
+        return title.includes('cat 1') || title.includes('cat1')
+            || title.includes('cat 2') || title.includes('cat2')
+            || title.includes('main exam') || title.includes('main_exam') || title.includes('final')
+            || type === 'quiz' || type === 'midterm' || type === 'final';
+    }
+
+    function getGroupedSlot(r) {
+        const title = String(r.exam_title || '').toLowerCase();
+        const type = String(r.exam_type || '').toLowerCase();
+        if (title.includes('main exam') || title.includes('main_exam') || title.includes('final') || type === 'final') return 'main_exam';
+        if (title.includes('cat 2') || title.includes('cat2') || type === 'midterm') return 'cat2';
+        return 'cat1';
+    }
+
+    function latestByDate(current, incoming) {
+        if (!current) return incoming;
+        const currentDate = current.submitted_at ? new Date(current.submitted_at).getTime() : 0;
+        const incomingDate = incoming.submitted_at ? new Date(incoming.submitted_at).getTime() : 0;
+        return incomingDate >= currentDate ? incoming : current;
+    }
+
+    const groupedAssessments = new Map();
+    const singleRows = [];
+
+    results.forEach(r => {
+        if (!isGroupedAssessmentEntry(r)) {
+            singleRows.push({ kind: 'single', result: r });
+            return;
+        }
+        const courseKey = String(r.course_title || 'General').trim();
+        if (!groupedAssessments.has(courseKey)) {
+            groupedAssessments.set(courseKey, { kind: 'grouped', course_title: r.course_title || '-', cat1: null, cat2: null, main_exam: null });
+        }
+        const group = groupedAssessments.get(courseKey);
+        const slot = getGroupedSlot(r);
+        group[slot] = latestByDate(group[slot], r);
+    });
+
+    const displayRows = [...singleRows, ...Array.from(groupedAssessments.values())];
+
+    displayRows.sort((a, b) => {
+        const aDate = a.kind === 'single'
+            ? (a.result.submitted_at ? new Date(a.result.submitted_at).getTime() : 0)
+            : Math.max(
+                a.cat1?.submitted_at ? new Date(a.cat1.submitted_at).getTime() : 0,
+                a.cat2?.submitted_at ? new Date(a.cat2.submitted_at).getTime() : 0,
+                a.main_exam?.submitted_at ? new Date(a.main_exam.submitted_at).getTime() : 0
+            );
+        const bDate = b.kind === 'single'
+            ? (b.result.submitted_at ? new Date(b.result.submitted_at).getTime() : 0)
+            : Math.max(
+                b.cat1?.submitted_at ? new Date(b.cat1.submitted_at).getTime() : 0,
+                b.cat2?.submitted_at ? new Date(b.cat2.submitted_at).getTime() : 0,
+                b.main_exam?.submitted_at ? new Date(b.main_exam.submitted_at).getTime() : 0
+            );
+        return bDate - aDate;
+    });
+
+    function buildStatusBadge(item, hasScore) {
+        if (item?.status === 'awaiting_release') {
+            return '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">Awaiting Release</span>';
+        }
+        if (hasScore) {
+            return '<span class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white">Released</span>';
+        }
+        return '<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-neutral-400">Pending</span>';
+    }
+
+    tbody.innerHTML = displayRows.map(row => {
+        if (row.kind === 'single') {
+            const r = row.result;
+            const hasScore = r.total_score != null;
+            const pct = hasScore && r.total_marks ? Math.round((r.total_score / r.total_marks) * 100) : null;
+            const g = pct != null ? letterGrade(pct) : { letter: '?', color: 'text-neutral-300 bg-white/10' };
+            return `<tr class="hover:bg-white/5 transition-colors">
+                <td class="py-3 px-4 text-white font-medium">${r.exam_title || 'Exam'}</td>
+                <td class="py-3 px-4 text-neutral-400 text-xs">${r.course_title || '-'}</td>
+                <td class="py-3 px-4 text-neutral-400 text-xs uppercase">${r.exam_type || '-'}</td>
+                <td class="py-3 px-4 text-center font-bold ${hasScore && pct != null && pct >= 50 ? 'text-white' : hasScore ? 'text-neutral-500' : 'text-neutral-300'}">${hasScore ? r.total_score + '/' + r.total_marks : '—'}</td>
+                <td class="py-3 px-4 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-bold ${g.color}">${g.letter}</span></td>
+                <td class="py-3 px-4">${buildStatusBadge(r, hasScore)}</td>
+                <td class="py-3 px-4 text-neutral-500 text-xs">${r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : '-'}</td>
+            </tr>`;
+        }
+
+        const cat1 = row.cat1;
+        const cat2 = row.cat2;
+        const mainExam = row.main_exam;
+        const hasCat1Score = !!(cat1 && cat1.total_score != null);
+        const hasCat2Score = !!(cat2 && cat2.total_score != null);
+        const hasMainScore = !!(mainExam && mainExam.total_score != null);
+        const hasAnyScore = hasCat1Score || hasCat2Score || hasMainScore;
+
+        const cat1Pct = hasCat1Score && cat1.total_marks ? (cat1.total_score / cat1.total_marks) * 100 : null;
+        const cat2Pct = hasCat2Score && cat2.total_marks ? (cat2.total_score / cat2.total_marks) * 100 : null;
+        const mainPct = hasMainScore && mainExam.total_marks ? (mainExam.total_score / mainExam.total_marks) * 100 : null;
+        const pctValues = [cat1Pct, cat2Pct, mainPct].filter(v => v != null);
+        const avgPct = pctValues.length ? Math.round(pctValues.reduce((a, b) => a + b, 0) / pctValues.length) : null;
+        const g = avgPct != null ? letterGrade(avgPct) : { letter: '?', color: 'text-neutral-300 bg-white/10' };
+
+        const scoreCell = `<div class="text-xs leading-5 text-left inline-block">
+            <div><span class="text-neutral-400">CAT 1:</span> <span class="font-semibold ${hasCat1Score ? 'text-white' : 'text-neutral-300'}">${hasCat1Score ? `${cat1.total_score}/${cat1.total_marks}` : '—'}</span></div>
+            <div><span class="text-neutral-400">CAT 2:</span> <span class="font-semibold ${hasCat2Score ? 'text-white' : 'text-neutral-300'}">${hasCat2Score ? `${cat2.total_score}/${cat2.total_marks}` : '—'}</span></div>
+            <div><span class="text-neutral-400">Main Exam:</span> <span class="font-semibold ${hasMainScore ? 'text-white' : 'text-neutral-300'}">${hasMainScore ? `${mainExam.total_score}/${mainExam.total_marks}` : '—'}</span></div>
+        </div>`;
+
+        const latestDate = Math.max(
+            cat1?.submitted_at ? new Date(cat1.submitted_at).getTime() : 0,
+            cat2?.submitted_at ? new Date(cat2.submitted_at).getTime() : 0,
+            mainExam?.submitted_at ? new Date(mainExam.submitted_at).getTime() : 0
+        );
+        const latestDateStr = latestDate ? new Date(latestDate).toLocaleDateString() : '-';
+
+        const statusSource = hasMainScore ? mainExam : (hasCat2Score ? cat2 : cat1);
+
         return `<tr class="hover:bg-white/5 transition-colors">
-            <td class="py-3 px-4 text-white font-medium">${r.exam_title || 'Exam'}</td>
-            <td class="py-3 px-4 text-neutral-400 text-xs">${r.course_title || '-'}</td>
-            <td class="py-3 px-4 text-neutral-400 text-xs uppercase">${r.exam_type || '-'}</td>
-            <td class="py-3 px-4 text-center font-bold ${isAwaiting ? 'text-neutral-300' : pct != null && pct >= 50 ? 'text-white' : 'text-neutral-500'}">${isAwaiting ? '—' : r.total_score != null ? r.total_score + '/' + r.total_marks : '-'}</td>
-            <td class="py-3 px-4 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-bold ${isAwaiting ? 'text-neutral-300 bg-white/10' : g.color}">${isAwaiting ? '?' : g.letter}</span></td>
-            <td class="py-3 px-4">${statusBadge}</td>
-            <td class="py-3 px-4 text-neutral-500 text-xs">${r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : '-'}</td>
+            <td class="py-3 px-4 text-white font-medium">CAT 1 + CAT 2 + Main Exam</td>
+            <td class="py-3 px-4 text-neutral-400 text-xs">${row.course_title || '-'}</td>
+            <td class="py-3 px-4 text-neutral-400 text-xs uppercase">Assessment Bundle</td>
+            <td class="py-3 px-4 text-center font-bold">${scoreCell}</td>
+            <td class="py-3 px-4 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-bold ${g.color}">${g.letter}</span></td>
+            <td class="py-3 px-4">${buildStatusBadge(statusSource, hasAnyScore)}</td>
+            <td class="py-3 px-4 text-neutral-500 text-xs">${latestDateStr}</td>
         </tr>`;
     }).join('');
 }

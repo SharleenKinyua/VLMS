@@ -81,7 +81,7 @@
 {% endblock %}
 
 {% block body %}
-<div class="exam-bg min-h-screen text-white">
+<div id="exam-root" data-exam-id="{{ exam_id }}" class="exam-bg min-h-screen text-white">
     <!-- Exam Header -->
     <nav class="glass-nav sticky top-0 z-30 px-4 py-3">
         <div class="max-w-6xl mx-auto flex justify-between items-center gap-3">
@@ -169,7 +169,7 @@
 const user = AUTH.getUser();
 if (!user || user.role !== 'student') { window.location.href = '/login'; }
 
-const examId = {{ exam_id }};
+const examId = Number(document.getElementById('exam-root')?.dataset?.examId || 0);
 let submissionId = null;
 let questions = [];
 let timerInterval = null;
