@@ -10,12 +10,13 @@ Install: https://ollama.com   then `ollama pull llama3` or `ollama pull mistral`
 """
 
 import json
+import os
 import re
 import requests
 
 OLLAMA_BASE = "http://localhost:11434"
-DEFAULT_MODEL = "llama3"          # change to "mistral" if preferred
-REQUEST_TIMEOUT = 120             # seconds – generation can be slow on CPU
+DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+REQUEST_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "15"))
 
 
 # ───────────────────── helpers ─────────────────────
@@ -30,13 +31,13 @@ def _ollama_available() -> bool:
 
 
 def _pick_model() -> str:
-    """Return the first available model, preferring llama3 > mistral > anything."""
+    """Return the first available model, preferring llama3.2 > llama3 > mistral > anything."""
     try:
         resp = requests.get(f"{OLLAMA_BASE}/api/tags", timeout=5)
         if resp.status_code != 200:
             return DEFAULT_MODEL
         models = [m["name"] for m in resp.json().get("models", [])]
-        for preferred in ("llama3", "mistral", "gemma"):
+        for preferred in ("llama3.2", "llama3", "mistral", "gemma"):
             for m in models:
                 if preferred in m.lower():
                     return m

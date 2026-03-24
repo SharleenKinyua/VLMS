@@ -214,6 +214,40 @@
     .exam-item {
         animation: examSlideUp 0.35s cubic-bezier(.4,0,.2,1) both;
     }
+    /* ── Calendar hover tooltip ── */
+    .calendar-event {
+        position: relative;
+    }
+    .calendar-tooltip {
+        position: fixed;
+        min-width: 220px;
+        max-width: 280px;
+        background: #111;
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+        color: #eaeaea;
+        padding: 10px 12px;
+        border-radius: 10px;
+        opacity: 0;
+        transform: translateY(6px) scale(0.98);
+        pointer-events: none;
+        transition: all 0.18s ease;
+        z-index: 999;
+    }
+    .calendar-tooltip.is-visible {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    .calendar-tooltip-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 4px;
+    }
+    .calendar-tooltip-line {
+        font-size: 11px;
+        color: rgba(255,255,255,0.7);
+    }
     @keyframes examSlideUp {
         from { opacity: 0; transform: translateY(14px); }
         to { opacity: 1; transform: translateY(0); }
@@ -299,13 +333,13 @@
 
         <!-- Tab switcher -->
         <div class="flex gap-1 bg-white/5 p-1 rounded-xl mb-6 max-w-md">
-            <button id="courses-tab-all" onclick="switchCoursesTab('all')"
-                    class="flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg bg-white text-black transition-all duration-200">
-                All Units Offered
-            </button>
             <button id="courses-tab-mine" onclick="switchCoursesTab('mine')"
-                    class="flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg text-neutral-400 hover:text-neutral-200 transition-all duration-200">
+                    class="flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg bg-white text-black transition-all duration-200">
                 My Registered Courses
+            </button>
+            <button id="courses-tab-all" onclick="switchCoursesTab('all')"
+                    class="flex-1 py-2.5 px-4 text-sm font-semibold rounded-lg text-neutral-400 hover:text-neutral-200 transition-all duration-200">
+                All Units Offered
             </button>
         </div>
 
@@ -547,6 +581,13 @@
         </div>
     </div>
 
+    <div id="calendar-tooltip" class="calendar-tooltip">
+        <div class="calendar-tooltip-title" id="calendar-tooltip-title"></div>
+        <div class="calendar-tooltip-line" id="calendar-tooltip-start"></div>
+        <div class="calendar-tooltip-line" id="calendar-tooltip-end"></div>
+        <div class="calendar-tooltip-line" id="calendar-tooltip-unit"></div>
+    </div>
+
     <!-- ═══════ CALENDAR SECTION ═══════ -->
     <div id="section-calendar" class="hidden">
         <div class="mb-6">
@@ -574,7 +615,7 @@
                     <div class="bg-white/5 py-2 text-center text-xs font-medium text-neutral-500">Fri</div>
                     <div class="bg-white/5 py-2 text-center text-xs font-medium text-neutral-500">Sat</div>
                 </div>
-                <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-white/10 rounded-b-lg overflow-hidden"></div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-white/10 rounded-b-lg overflow-visible"></div>
             </div>
             <!-- Upcoming events sidebar -->
             <div>
@@ -742,6 +783,18 @@ function syncViewInUrl(section, replace = true) {
     }
 }
 
+function syncCoursesTabInUrl(tab, replace = true) {
+    const url = new URL(window.location.href);
+    if ((url.searchParams.get('view') || '').toLowerCase() !== 'courses') return;
+    url.searchParams.set('coursesTab', tab);
+    const nextUrl = `${url.pathname}?${url.searchParams.toString()}${url.hash}`;
+    if (replace) {
+        window.history.replaceState({}, '', nextUrl);
+    } else {
+        window.history.pushState({}, '', nextUrl);
+    }
+}
+
 function navigateTo(section, { syncUrl = true } = {}) {
     if (!sections.includes(section)) section = 'dashboard';
 
@@ -854,7 +907,8 @@ window.addEventListener('scroll', () => {
 
 // ═══════ COURSES PAGE ═══════
 let allCoursesData = [];
-let currentCoursesTab = 'all';
+let currentCoursesTab = 'mine';
+let studentExamsByCourse = {};
 
 async function loadCoursesPage() {
     const allGrid = document.getElementById('all-courses-grid');
@@ -866,7 +920,40 @@ async function loadCoursesPage() {
     if (!resp.ok) return;
     const data = await resp.json();
     allCoursesData = data.items || [];
+
+    const examsResp = await AUTH.fetch('/api/student/exams');
+    if (examsResp.ok) {
+        const examsData = await examsResp.json();
+        studentExamsByCourse = buildCourseExamMap(examsData.exams || []);
+    } else {
+        studentExamsByCourse = {};
+    }
     renderCoursesGrid();
+    switchCoursesTab(currentCoursesTab);
+}
+
+function buildCourseExamMap(exams) {
+    const map = {};
+    exams.forEach(exam => {
+        const courseId = exam.course_id;
+        const key = getAssessmentKey(exam);
+        if (!key || !courseId) return;
+        if (!map[courseId]) map[courseId] = {};
+        map[courseId][key] = exam;
+    });
+    return map;
+}
+
+function getAssessmentKey(exam) {
+    const desc = (exam.description || '').toLowerCase();
+    const marker = desc.match(/\[assessment:([a-z0-9_]+)\]/i);
+    if (marker && marker[1]) return marker[1];
+    const type = (exam.exam_type || '').toLowerCase();
+    if (type === 'quiz') return 'cat1';
+    if (type === 'midterm') return 'cat2';
+    if (type === 'assignment') return 'assignment';
+    if (type === 'final') return 'main_exam';
+    return '';
 }
 
 function renderCoursesGrid() {
@@ -912,6 +999,8 @@ function renderCourseCard(c, tab) {
         ? `<button onclick="event.stopPropagation();viewCourse(${c.id})" class="w-full bg-white/10 hover:bg-white/20 text-white text-sm py-2 rounded-lg transition-all duration-200 font-medium">View Course</button>`
         : `<button onclick="event.stopPropagation();registerCourse(${c.id})" id="enroll-btn-${c.id}" class="w-full bg-white hover:bg-neutral-200 text-black text-sm py-2 rounded-lg transition-all duration-200 font-medium">Register</button>`;
 
+    const assessmentButtons = (tab === 'mine' && c.enrolled) ? renderAssessmentButtons(c.id) : '';
+
     return `
         <div class="dark-card hover:border-white/20 transition overflow-hidden">
             <div class="h-1 ${c.enrolled ? 'bg-white/40' : 'bg-white/20'}"></div>
@@ -925,13 +1014,50 @@ function renderCourseCard(c, tab) {
                 </div>
                 <h3 class="font-semibold text-white mb-1">${c.title}</h3>
                 <p class="text-sm text-neutral-400 line-clamp-2 mb-4">${c.description || 'No description available'}</p>
+                ${assessmentButtons}
                 ${actionBtn}
             </div>
         </div>`;
 }
 
+function renderAssessmentButtons(courseId) {
+    const exams = studentExamsByCourse[courseId] || {};
+    const items = [
+        { key: 'cat1', label: 'CAT 1' },
+        { key: 'cat2', label: 'CAT 2' },
+        { key: 'assignment', label: 'Assignment' },
+        { key: 'main_exam', label: 'Main Exam' },
+    ];
+
+    const buttons = items.map(item => {
+        const exam = exams[item.key];
+        if (!exam) {
+            return `<button disabled class="bg-white/5 text-neutral-600 text-xs px-3 py-2 rounded-lg cursor-not-allowed">${item.label} • Not Posted</button>`;
+        }
+
+        const availability = exam.availability || 'open';
+        const isOpen = availability === 'open' || availability === 'in_progress';
+        const label = availability === 'upcoming'
+            ? `${item.label} • Upcoming`
+            : availability === 'closed'
+                ? `${item.label} • Closed`
+                : `${item.label} • Open`;
+
+        const classes = isOpen
+            ? 'bg-white/15 hover:bg-white/25 text-white'
+            : 'bg-white/10 text-neutral-400 cursor-not-allowed';
+
+        const handler = isOpen ? `startExam(${exam.id})` : `alert('${item.label} is not open yet.')`;
+
+        return `<button onclick="${handler}" class="${classes} text-xs px-3 py-2 rounded-lg transition-all duration-200">${label}</button>`;
+    }).join('');
+
+    return `<div class="grid grid-cols-2 gap-2 mb-4">${buttons}</div>`;
+}
+
 function switchCoursesTab(tab) {
     currentCoursesTab = tab;
+    syncCoursesTabInUrl(tab, false);
     const allBtn = document.getElementById('courses-tab-all');
     const mineBtn = document.getElementById('courses-tab-mine');
     const allContent = document.getElementById('courses-tab-all-content');
@@ -1489,9 +1615,12 @@ async function loadCalendarPage() {
                 id: exam.id,
                 type: 'exam',
                 title: exam.title,
+                description: exam.description || '',
                 course_title: exam.course_title || '',
                 start_at: exam.start_time,
+                end_at: exam.end_time || null,
                 duration_minutes: exam.duration_minutes,
+                exam_type: exam.exam_type || '',
                 availability: exam.availability || 'open'
             });
         });
@@ -1507,6 +1636,7 @@ async function loadCalendarPage() {
                 title: liveClass.title,
                 course_title: liveClass.course_title || '',
                 start_at: liveClass.scheduled_at,
+                end_at: liveClass.end_at || null,
                 duration_minutes: liveClass.duration_minutes,
                 platform: liveClass.platform || 'custom',
                 availability: liveClass.access_status === 'unlocked' ? 'open' : 'upcoming'
@@ -1551,12 +1681,12 @@ function renderCalendar() {
     let cells = '';
     // Empty cells before first day
     for (let i = 0; i < firstDay; i++) {
-        cells += '<div class="bg-[#111111] p-2 min-h-[60px]"></div>';
+        cells += '<div class="bg-[#111111] p-2 min-h-[60px] overflow-visible"></div>';
     }
     for (let d = 1; d <= daysInMonth; d++) {
         const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
         const events = eventDays[d] || [];
-        cells += `<div class="bg-[#111111] p-2 min-h-[60px] ${isToday ? 'ring-2 ring-inset ring-white' : ''}">
+        cells += `<div class="calendar-day bg-[#111111] p-2 min-h-[60px] overflow-visible ${isToday ? 'ring-2 ring-inset ring-white' : ''}">
             <span class="text-xs font-medium ${isToday ? 'text-white font-bold' : 'text-neutral-400'}">${d}</span>
             ${events.map(ev => {
                 const eventColor = ev.type === 'class'
@@ -1566,12 +1696,73 @@ function renderCalendar() {
                         : ev.availability === 'upcoming'
                             ? 'bg-white/10 text-neutral-300 border border-white/10'
                             : 'bg-white/5 text-neutral-400 border border-white/5';
-                const label = ev.type === 'class' ? `Class: ${ev.title}` : `CAT/Exam: ${ev.title}`;
-                return `<button type="button" onclick="openCalendarEvent('${ev.type}', ${ev.id})" class="w-full mt-1 text-left text-xs px-1.5 py-0.5 rounded truncate transition-all hover:translate-x-0.5 ${eventColor}" title="${label}">${ev.title}</button>`;
+                const label = ev.type === 'class' ? `Class: ${ev.title}` : `${getExamTypeLabel(ev)}: ${ev.title}`;
+                const tooltip = buildCalendarTooltip(ev);
+                return `<button type="button" onclick="openCalendarEvent('${ev.type}', ${ev.id})" class="calendar-event w-full mt-1 text-left text-xs px-1.5 py-0.5 rounded truncate transition-all hover:translate-x-0.5 ${eventColor}" aria-label="${label}" data-tooltip-title="${tooltip.title}" data-tooltip-start="${tooltip.start}" data-tooltip-end="${tooltip.end}" data-tooltip-unit="${tooltip.unit}">${ev.title}</button>`;
             }).join('')}
         </div>`;
     }
     grid.innerHTML = cells;
+    bindCalendarTooltips();
+}
+
+function getExamTypeLabel(ev) {
+    if (ev.type !== 'exam') return 'Exam';
+    const desc = (ev.description || '').toLowerCase();
+    const marker = desc.match(/\[assessment:([a-z0-9_]+)\]/i);
+    const mapped = marker && marker[1] ? marker[1] : '';
+    if (mapped === 'cat1') return 'CAT 1';
+    if (mapped === 'cat2') return 'CAT 2';
+    if (mapped === 'assignment') return 'Assignment';
+    if (mapped === 'main_exam') return 'Main Exam';
+
+    const type = (ev.exam_type || '').toLowerCase();
+    if (type === 'quiz') return 'CAT 1';
+    if (type === 'midterm') return 'CAT 2';
+    if (type === 'assignment') return 'Assignment';
+    if (type === 'final') return 'Main Exam';
+    return 'Exam';
+}
+
+function buildCalendarTooltip(ev) {
+    const start = ev.start_at ? new Date(ev.start_at) : null;
+    const end = ev.end_at ? new Date(ev.end_at) : null;
+    const typeLabel = ev.type === 'class' ? 'Class' : getExamTypeLabel(ev);
+    const title = ev.type === 'class' ? `Class: ${ev.title}` : `${typeLabel}: ${ev.title}`;
+    const startLine = start ? `Starts: ${start.toLocaleString()}` : 'Starts: -';
+    const endLine = end ? `Deadline: ${end.toLocaleString()}` : 'Deadline: -';
+    const unitLine = ev.course_title ? `Unit: ${ev.course_title}` : 'Unit: -';
+
+    return { title, start: startLine, end: endLine, unit: unitLine };
+}
+
+function bindCalendarTooltips() {
+    const tooltip = document.getElementById('calendar-tooltip');
+    if (!tooltip) return;
+    const titleEl = document.getElementById('calendar-tooltip-title');
+    const startEl = document.getElementById('calendar-tooltip-start');
+    const endEl = document.getElementById('calendar-tooltip-end');
+    const unitEl = document.getElementById('calendar-tooltip-unit');
+
+    document.querySelectorAll('.calendar-event').forEach(btn => {
+        btn.onmouseenter = (event) => {
+            titleEl.textContent = btn.dataset.tooltipTitle || '';
+            startEl.textContent = btn.dataset.tooltipStart || '';
+            endEl.textContent = btn.dataset.tooltipEnd || '';
+            unitEl.textContent = btn.dataset.tooltipUnit || '';
+
+            const rect = event.target.getBoundingClientRect();
+            const left = Math.min(rect.left, window.innerWidth - 300);
+            const top = Math.max(rect.bottom + 8, 8);
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+            tooltip.classList.add('is-visible');
+        };
+
+        btn.onmouseleave = () => {
+            tooltip.classList.remove('is-visible');
+        };
+    });
 }
 
 function renderCalendarEvents() {
@@ -2401,6 +2592,10 @@ checkProfileSetup();
 
 const params = new URLSearchParams(window.location.search);
 const requestedView = (params.get('view') || 'dashboard').toLowerCase();
+const requestedCoursesTab = (params.get('coursesTab') || '').toLowerCase();
+if (requestedCoursesTab === 'all' || requestedCoursesTab === 'mine') {
+    currentCoursesTab = requestedCoursesTab;
+}
 const initialView = sections.includes(requestedView) ? requestedView : 'dashboard';
 navigateTo(initialView, { syncUrl: false });
 if (requestedView !== initialView) {
@@ -2410,6 +2605,10 @@ if (requestedView !== initialView) {
 window.addEventListener('popstate', () => {
     const p = new URLSearchParams(window.location.search);
     const view = (p.get('view') || 'dashboard').toLowerCase();
+    const tab = (p.get('coursesTab') || '').toLowerCase();
+    if (tab === 'all' || tab === 'mine') {
+        currentCoursesTab = tab;
+    }
     navigateTo(sections.includes(view) ? view : 'dashboard', { syncUrl: false });
 });
 </script>

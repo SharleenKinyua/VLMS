@@ -166,6 +166,22 @@
     .dashboard-section-fade {
         animation: fadeUp 0.45s cubic-bezier(.4,0,.2,1) both;
     }
+    /* ── Paper-unroll modal ── */
+    .paper-modal {
+        transform-origin: top;
+        animation: paperUnroll 0.32s cubic-bezier(.22,.61,.36,1) both;
+    }
+    .paper-backdrop {
+        animation: fadeBackdrop 0.2s ease both;
+    }
+    @keyframes paperUnroll {
+        from { opacity: 0; transform: scaleY(0.85) translateY(-6px); }
+        to { opacity: 1; transform: scaleY(1) translateY(0); }
+    }
+    @keyframes fadeBackdrop {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
     @keyframes statSlideUp {
         from { opacity: 0; transform: translateY(14px); }
         to { opacity: 1; transform: translateY(0); }
@@ -498,6 +514,34 @@
         </div>
     </div>
 </div>
+
+<!-- Notice Modal -->
+<div id="notice-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4 paper-backdrop">
+    <div class="paper-modal bg-white rounded-2xl shadow-2xl w-full max-w-md border border-black/[0.06]">
+        <div class="p-6 border-b border-black/[0.06]">
+            <h3 id="notice-title" class="text-lg font-semibold text-black">Notice</h3>
+            <p id="notice-message" class="text-sm text-black/60 mt-2">Message</p>
+        </div>
+        <div class="p-4 flex justify-end gap-3 bg-black/[0.02] rounded-b-2xl">
+            <button id="notice-ok" class="px-4 py-2 text-sm bg-black hover:bg-black/80 text-white font-semibold rounded-xl transition-all">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Prompt Modal -->
+<div id="prompt-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4 paper-backdrop">
+    <div class="paper-modal bg-white rounded-2xl shadow-2xl w-full max-w-md border border-black/[0.06]">
+        <div class="p-6 border-b border-black/[0.06]">
+            <h3 id="prompt-title" class="text-lg font-semibold text-black">Enter Value</h3>
+            <p id="prompt-message" class="text-sm text-black/60 mt-2">Message</p>
+            <input id="prompt-input" type="text" class="mt-4 w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black" placeholder="">
+        </div>
+        <div class="p-4 flex justify-end gap-3 bg-black/[0.02] rounded-b-2xl">
+            <button id="prompt-cancel" class="px-4 py-2 text-sm text-black/50 hover:text-black font-medium transition-colors">Cancel</button>
+            <button id="prompt-ok" class="px-4 py-2 text-sm bg-black hover:bg-black/80 text-white font-semibold rounded-xl transition-all">Save</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -618,6 +662,81 @@ function showConfirmModal({ title = 'Confirm Action', message = 'Are you sure?',
     });
 }
 
+function showNoticeModal({ title = 'Notice', message = '', okText = 'OK' } = {}) {
+    const modal = document.getElementById('notice-modal');
+    const titleEl = document.getElementById('notice-title');
+    const messageEl = document.getElementById('notice-message');
+    const okBtn = document.getElementById('notice-ok');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    okBtn.textContent = okText;
+    modal.classList.remove('hidden');
+
+    return new Promise((resolve) => {
+        const cleanup = () => {
+            modal.classList.add('hidden');
+            okBtn.onclick = null;
+            modal.onclick = null;
+        };
+
+        okBtn.onclick = () => {
+            cleanup();
+            resolve(true);
+        };
+
+        modal.onclick = (event) => {
+            if (event.target === modal) {
+                cleanup();
+                resolve(true);
+            }
+        };
+    });
+}
+
+function showPromptModal({ title = 'Enter Value', message = '', placeholder = '', value = '' } = {}) {
+    const modal = document.getElementById('prompt-modal');
+    const titleEl = document.getElementById('prompt-title');
+    const messageEl = document.getElementById('prompt-message');
+    const inputEl = document.getElementById('prompt-input');
+    const okBtn = document.getElementById('prompt-ok');
+    const cancelBtn = document.getElementById('prompt-cancel');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    inputEl.placeholder = placeholder;
+    inputEl.value = value;
+    modal.classList.remove('hidden');
+    setTimeout(() => inputEl.focus(), 0);
+
+    return new Promise((resolve) => {
+        const cleanup = () => {
+            modal.classList.add('hidden');
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            modal.onclick = null;
+        };
+
+        okBtn.onclick = () => {
+            const val = inputEl.value.trim();
+            cleanup();
+            resolve(val || null);
+        };
+
+        cancelBtn.onclick = () => {
+            cleanup();
+            resolve(null);
+        };
+
+        modal.onclick = (event) => {
+            if (event.target === modal) {
+                cleanup();
+                resolve(null);
+            }
+        };
+    });
+}
+
 // ═══════ NAV DROPDOWN MANAGEMENT ═══════
 function toggleMobileNav() {
     const mobileNav = document.getElementById('mobile-nav');
@@ -658,6 +777,21 @@ window.addEventListener('scroll', () => {
 
 let currentCourseId = null;
 let currentOverviewMode = 'dashboard';
+let activeCourseTab = 'lectures';
+
+function updateCourseDetailUrl(courseId, tab) {
+    const params = new URLSearchParams(window.location.search);
+    if (courseId) {
+        params.set('courseId', courseId);
+        params.set('tab', tab || activeCourseTab || 'lectures');
+        params.set('view', 'courses');
+    } else {
+        params.delete('courseId');
+        params.delete('tab');
+    }
+    const nextUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, '', nextUrl);
+}
 
 function setActiveNav(navId) {
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -696,12 +830,12 @@ async function ensureCourseContext() {
     if (currentCourseId) return true;
     const resp = await AUTH.fetch('/api/lecturer/courses');
     if (!resp.ok) {
-        alert('Unable to load courses right now.');
+        showNoticeModal({ title: 'Unable to Load', message: 'Unable to load courses right now.' });
         return false;
     }
     const data = await resp.json();
     if (!data.items || data.items.length === 0) {
-        alert('Create a course first to access this section.');
+        showNoticeModal({ title: 'No Courses', message: 'Create a course first to access this section.' });
         return false;
     }
     const firstCourse = data.items[0];
@@ -773,6 +907,7 @@ async function loadCourses() {
     const courses = data.items || [];
 
     let exams = [];
+    const examsByCourse = new Map();
     if (courses.length > 0) {
         const examResponses = await Promise.all(courses.map(course => AUTH.fetch(`/api/lecturer/courses/${course.id}/exams`)));
         const examPayloads = await Promise.all(examResponses.map(async (examResp) => {
@@ -780,6 +915,9 @@ async function loadCourses() {
             return examResp.json();
         }));
         exams = examPayloads.flatMap(payload => payload.exams || []);
+        courses.forEach((course, index) => {
+            examsByCourse.set(course.id, examPayloads[index]?.exams || []);
+        });
     }
 
     const totalExams = exams.length;
@@ -856,6 +994,24 @@ async function loadCourses() {
         return;
     }
 
+    const assessmentBadge = (label, isSet) => `
+        <span class="text-[11px] font-medium px-2 py-0.5 rounded-full ${isSet ? 'bg-emerald-50 text-emerald-700' : 'bg-black/[0.04] text-black/45'}">
+            ${label}: ${isSet ? 'Set' : 'Not set'}
+        </span>
+    `;
+
+    const renderAssessmentStatus = (courseId) => {
+        const courseExams = examsByCourse.get(courseId) || [];
+        const types = new Set(courseExams.map(getAssessmentTypeFromExam));
+        return `
+            <div class="mt-3 flex flex-wrap gap-2">
+                ${assessmentBadge('CAT 1', types.has('cat1'))}
+                ${assessmentBadge('CAT 2', types.has('cat2'))}
+                ${assessmentBadge('Main Exam', types.has('main_exam'))}
+            </div>
+        `;
+    };
+
     grid.innerHTML = courses.map(c => `
         <div class="bg-white rounded-2xl border border-black/[0.06] p-6 hover:border-black/[0.14] hover:shadow-lg hover:shadow-black/[0.05] transition-all group">
             <div class="flex justify-between items-start mb-5">
@@ -868,6 +1024,7 @@ async function loadCourses() {
             <div onclick="openCourseDetail(${c.id}, '${c.title.replace(/'/g, "\\'")}')" class="cursor-pointer">
                 <h3 class="text-lg font-semibold text-black group-hover:text-black/70 transition">${c.title}</h3>
                 <p class="text-sm text-black/45 mt-2 leading-relaxed min-h-[44px]">${c.description || 'No description yet.'}</p>
+                ${renderAssessmentStatus(c.id)}
                 <div class="mt-5 pt-4 border-t border-black/[0.06] flex items-center justify-between">
                     <p class="text-xs uppercase tracking-wide text-black/35">${c.category || 'Uncategorized'}</p>
                     <span class="text-xs font-medium text-black/55 group-hover:text-black transition-colors">Open Course →</span>
@@ -900,11 +1057,13 @@ document.getElementById('create-course-form').addEventListener('submit', async (
 
 async function openCourseDetail(courseId, title) {
     currentCourseId = courseId;
+    activeCourseTab = 'lectures';
     document.getElementById('detail-title').textContent = title;
     document.getElementById('detail-instructor').textContent = `Instructor: ${user.first_name} ${user.last_name}`;
     document.getElementById('courses-overview').classList.add('hidden');
     document.getElementById('course-detail').classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    updateCourseDetailUrl(courseId, activeCourseTab);
     switchTab('lectures');
 }
 
@@ -913,9 +1072,12 @@ function closeCourseDetail() {
     document.getElementById('courses-overview').classList.remove('hidden');
     setOverviewView(currentOverviewMode);
     currentCourseId = null;
+    activeCourseTab = 'lectures';
+    updateCourseDetailUrl(null, null);
 }
 
 function switchTab(tab) {
+    activeCourseTab = tab;
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('bg-black', 'text-white');
         btn.classList.add('text-black/40', 'hover:text-black/60', 'hover:bg-black/[0.04]');
@@ -929,6 +1091,10 @@ function switchTab(tab) {
     else if (tab === 'exams') loadExams();
     else if (tab === 'students') loadStudents();
     else if (tab === 'classes') loadClasses();
+
+    if (currentCourseId) {
+        updateCourseDetailUrl(currentCourseId, tab);
+    }
 }
 
 async function loadLectures() {
@@ -944,24 +1110,53 @@ async function loadLectures() {
         ${data.lectures.length === 0 ? '<p class="text-black/30 text-sm">No lectures yet.</p>'
         : data.lectures.map(l => `
             <div class="border border-black/[0.06] hover:border-black/[0.12] rounded-xl p-4 mb-3 transition-all">
-                <div class="flex justify-between">
-                    <h5 class="font-medium text-black">${l.title}</h5>
-                    <span class="text-xs font-medium ${l.is_published ? 'text-black/60' : 'text-black/30'}">${l.is_published ? 'Published' : 'Draft'}</span>
+                <div class="flex justify-between items-start gap-3">
+                    <div>
+                        <h5 class="font-medium text-black">${l.title}</h5>
+                        <p class="text-sm text-black/40 mt-1">${l.duration_minutes ? l.duration_minutes + ' min' : ''}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium ${l.is_published ? 'text-black/60' : 'text-black/30'}">${l.is_published ? 'Published' : 'Draft'}</span>
+                        <button onclick="editLecture(${l.id}, '${l.title.replace(/'/g, "\\'")}', ${l.duration_minutes || 'null'}, ${l.is_published ? 'true' : 'false'})"
+                                class="text-xs bg-black/[0.04] text-black/60 px-2.5 py-1 rounded-lg hover:bg-black/[0.08] font-medium transition-all">
+                            Edit
+                        </button>
+                    </div>
                 </div>
-                <p class="text-sm text-black/40 mt-1">${l.duration_minutes ? l.duration_minutes + ' min' : ''}</p>
             </div>
         `).join('')}
     `;
 }
 
 async function createLecture() {
-    const title = prompt('Lecture title:');
+    const title = await showPromptModal({ title: 'Lecture Title', message: 'Enter the lecture title.', placeholder: 'Lecture title' });
     if (!title) return;
     await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/lectures`, {
         method: 'POST',
         body: JSON.stringify({ title, is_published: true }),
     });
     loadLectures();
+}
+
+async function editLecture(lectureId, currentTitle, currentDuration, currentPublished) {
+    const title = await showPromptModal({ title: 'Lecture Title', message: 'Update the lecture title.', placeholder: 'Lecture title', value: currentTitle || '' });
+    if (!title) return;
+
+    const resp = await AUTH.fetch(`/api/lecturer/lectures/${lectureId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+            title,
+            duration_minutes: currentDuration,
+            is_published: currentPublished,
+        }),
+    });
+
+    if (resp.ok) {
+        loadLectures();
+    } else {
+        const d = await resp.json().catch(() => ({}));
+        showNoticeModal({ title: 'Update Failed', message: d.error || 'Failed to update lecture.' });
+    }
 }
 
 async function loadMaterials() {
@@ -985,7 +1180,9 @@ async function loadMaterials() {
                         </div>
                         <div class="flex items-center gap-2">
                             ${m.ai_summary
-                                ? '<span class="text-xs px-2 py-0.5 rounded-full bg-black/5 text-black/60 font-medium">AI Summarized</span>'
+                                ? (m.file_type === 'pdf'
+                                    ? `<a href="/lecturer/materials/${m.id}/read" class="text-xs px-2 py-0.5 rounded-full bg-black/5 text-black/60 font-medium hover:bg-black/10 transition-colors">AI Summarized</a>`
+                                    : '<span class="text-xs px-2 py-0.5 rounded-full bg-black/5 text-black/60 font-medium">AI Summarized</span>')
                                 : `<button onclick="summarizeMaterial(${m.id}, this)" class="text-xs px-2.5 py-1 rounded-lg bg-black/[0.04] text-black/60 hover:bg-black/[0.08] font-medium transition-all">Summarize</button>`}
                             <button onclick="deleteMaterial(${m.id}, ${currentCourseId})" class="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium transition-all">Delete</button>
                             <a href="/uploads/${m.file_path}" target="_blank" rel="noopener"
@@ -1063,7 +1260,9 @@ async function loadMaterialsOverview() {
                             </div>
                             <div class="flex items-center gap-2">
                                 ${m.ai_summary
-                                    ? '<span class="text-xs px-2 py-0.5 rounded-full bg-black/5 text-black/60 font-medium">AI Summarized</span>'
+                                    ? (m.file_type === 'pdf'
+                                        ? `<a href="/lecturer/materials/${m.id}/read" class="text-xs px-2 py-0.5 rounded-full bg-black/5 text-black/60 font-medium hover:bg-black/10 transition-colors">AI Summarized</a>`
+                                        : '<span class="text-xs px-2 py-0.5 rounded-full bg-black/5 text-black/60 font-medium">AI Summarized</span>')
                                     : `<button onclick="summarizeMaterial(${m.id}, this)" class="text-xs px-2.5 py-1 rounded-lg bg-black/[0.04] text-black/60 hover:bg-black/[0.08] font-medium transition-all">Summarize</button>`}
                                 <button onclick="deleteMaterial(${m.id}, ${course.id}, true)" class="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium transition-all">Delete</button>
                                 <a href="/uploads/${m.file_path}" target="_blank" rel="noopener" class="text-sm text-black/60 hover:text-black font-medium transition-colors">View</a>
@@ -1083,7 +1282,7 @@ async function summarizeMaterial(materialId, btn) {
         loadMaterials();
     } else {
         const d = await resp.json().catch(() => ({}));
-        alert(d.error || 'Failed to summarize material.');
+        showNoticeModal({ title: 'Summarize Failed', message: d.error || 'Failed to summarize material.' });
         btn.disabled = false; btn.textContent = 'Summarize';
     }
 }
@@ -1122,14 +1321,14 @@ async function uploadMaterialForCourse(input, courseId) {
         await loadMaterialsOverview();
     } else {
         const d = await resp.json().catch(() => ({}));
-        alert(d.error || 'Failed to upload material.');
+        showNoticeModal({ title: 'Upload Failed', message: d.error || 'Failed to upload material.' });
     }
 }
 
 async function deleteMaterial(materialId, courseId = null, refreshOverview = false) {
     const confirmed = await showConfirmModal({
         title: 'Delete Material',
-        message: 'Delete this material?',
+        message: 'Delete this material? This removes the file, clears student progress tracking, and students will lose access.',
         confirmText: 'Delete Material',
         confirmClass: 'bg-red-600 hover:bg-red-700 text-white'
     });
@@ -1137,7 +1336,7 @@ async function deleteMaterial(materialId, courseId = null, refreshOverview = fal
     const resp = await AUTH.fetch(`/api/lecturer/materials/${materialId}`, { method: 'DELETE' });
     if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));
-        alert(d.error || 'Failed to delete material.');
+        showNoticeModal({ title: 'Delete Failed', message: d.error || 'Failed to delete material.' });
         return;
     }
 
@@ -1309,7 +1508,7 @@ async function loadExams() {
 async function openExamGenerator(courseId) {
     currentCourseId = courseId || currentCourseId;
     if (!currentCourseId) {
-        alert('Select a course first.');
+        showNoticeModal({ title: 'Select a Course', message: 'Select a course first.' });
         return;
     }
     await refreshExamTypeOptions(currentCourseId);
@@ -1388,7 +1587,7 @@ async function deleteExam(examId, refreshOverview = false) {
     const resp = await AUTH.fetch(`/api/lecturer/exams/${examId}`, { method: 'DELETE' });
     if (!resp.ok) {
         const d = await resp.json().catch(() => ({}));
-        alert(d.error || 'Failed to delete exam.');
+        showNoticeModal({ title: 'Delete Failed', message: d.error || 'Failed to delete exam.' });
         return;
     }
 
@@ -1475,7 +1674,7 @@ async function saveQuestion(qId, qType) {
     if (resp.ok) {
         await loadReviewQuestions(reviewExamId);
     } else {
-        alert('Failed to save question.');
+        showNoticeModal({ title: 'Save Failed', message: 'Failed to save question.' });
     }
 }
 
@@ -1506,7 +1705,7 @@ async function approveAndPublish() {
         loadExams();
     } else {
         const d = await resp.json().catch(() => ({}));
-        alert(d.error || 'Failed to publish exam.');
+        showNoticeModal({ title: 'Publish Failed', message: d.error || 'Failed to publish exam.' });
     }
 }
 
@@ -1614,14 +1813,14 @@ async function toggleReleaseGrades(examId) {
     const resp = await AUTH.fetch(`/api/lecturer/exams/${examId}/release-grades`, { method: 'POST' });
     if (resp.ok) {
         const data = await resp.json();
-        alert(data.message);
+        showNoticeModal({ title: 'Grades Updated', message: data.message });
         loadExams();
         if (document.getElementById('submissions-modal').classList.contains('hidden') === false) {
             await loadSubmissions(examId);
         }
     } else {
         const d = await resp.json().catch(() => ({}));
-        alert(d.error || 'Failed to toggle grades release.');
+        showNoticeModal({ title: 'Update Failed', message: d.error || 'Failed to toggle grades release.' });
     }
 }
 
@@ -1642,7 +1841,10 @@ applyExamTypeDefaults();
 document.getElementById('create-exam-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const types = [...document.querySelectorAll('.question-type-cb:checked')].map(cb => cb.value);
-    if (types.length === 0) { alert('Select at least one question type.'); return; }
+    if (types.length === 0) {
+        showNoticeModal({ title: 'Missing Selection', message: 'Select at least one question type.' });
+        return;
+    }
     const btn = document.getElementById('generate-btn');
     btn.disabled = true; btn.textContent = 'Generating questions...';
     const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/exams/generate`, {
@@ -1676,7 +1878,7 @@ document.getElementById('create-exam-form').addEventListener('submit', async (e)
         }
     } else {
         const d = await resp.json().catch(() => ({}));
-        alert(d.error || 'Failed to generate exam.');
+        showNoticeModal({ title: 'Generation Failed', message: d.error || 'Failed to generate exam.' });
     }
 });
 
@@ -1784,14 +1986,17 @@ async function createClass() {
     const duration = parseInt(document.getElementById('class-duration').value) || 60;
     const description = document.getElementById('class-description').value.trim();
     const unlocked = document.getElementById('class-unlocked').checked;
-    if (!title || !link || !datetime) { alert('Title, meeting link, and date/time are required.'); return; }
+    if (!title || !link || !datetime) {
+        showNoticeModal({ title: 'Missing Details', message: 'Title, meeting link, and date/time are required.' });
+        return;
+    }
     const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/classes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, meeting_link: link, platform, scheduled_at: datetime, duration_minutes: duration, description: description || null, is_unlocked: unlocked })
     });
     if (resp.ok) { loadClasses(); }
-    else { const d = await resp.json(); alert(d.error || 'Failed to create class.'); }
+    else { const d = await resp.json(); showNoticeModal({ title: 'Create Failed', message: d.error || 'Failed to create class.' }); }
 }
 
 async function toggleClassLock(classId) {
@@ -1815,10 +2020,30 @@ async function initializeLecturerDashboard() {
     const params = new URLSearchParams(window.location.search);
     const requestedView = (params.get('view') || 'dashboard').toLowerCase();
     const requestedAction = (params.get('action') || '').toLowerCase();
+    const requestedCourseId = parseInt(params.get('courseId') || '', 10);
+    const requestedTab = (params.get('tab') || '').toLowerCase();
     const allowedViews = new Set(['dashboard', 'courses', 'lectures', 'materials', 'exams']);
     const initialView = allowedViews.has(requestedView) ? requestedView : 'dashboard';
 
     await navigateLecturer(initialView);
+
+    if (requestedCourseId) {
+        try {
+            const resp = await AUTH.fetch('/api/lecturer/courses');
+            if (resp.ok) {
+                const data = await resp.json();
+                const course = (data.items || []).find(c => c.id === requestedCourseId);
+                if (course) {
+                    openCourseDetail(course.id, course.title.replace(/'/g, "\\'"));
+                    if (requestedTab) {
+                        switchTab(requestedTab);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to restore course detail view:', error);
+        }
+    }
 
     if (requestedAction === 'create-course') {
         setActiveNav('nav-courses');

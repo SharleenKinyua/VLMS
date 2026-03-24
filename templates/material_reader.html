@@ -19,7 +19,10 @@
                 <h1 class="text-lg font-semibold">{{ material_data.title }}</h1>
                 <p class="text-xs text-neutral-400">{{ material_data.course_title or 'Course Material' }}</p>
             </div>
-            <a href="/student/dashboard?view=resources" class="reader-btn px-3 py-2 rounded-lg text-sm">Back to Dashboard</a>
+            <div class="flex items-center gap-2">
+                <a href="{{ material_data.file_url }}" download class="reader-btn px-3 py-2 rounded-lg text-sm">Download</a>
+                <a href="{{ back_url or '/student/dashboard?view=resources' }}" class="reader-btn px-3 py-2 rounded-lg text-sm">Back to Dashboard</a>
+            </div>
         </div>
     </header>
 
@@ -30,10 +33,17 @@
                 <button id="next-page" class="reader-btn px-3 py-2 rounded-lg text-sm">Next</button>
                 <span class="text-sm text-neutral-300">Page <span id="page-num">1</span> / <span id="page-count">-</span></span>
             </div>
-            <div class="text-xs text-neutral-400">
+            <div id="progress-meta" class="text-xs text-neutral-400">
                 Last reached: <span id="last-reached" class="text-neutral-300">-</span>
             </div>
         </div>
+
+        {% if material_data.ai_summary %}
+        <div class="reader-card rounded-xl p-3 md:p-5">
+            <h2 class="text-sm font-semibold text-neutral-200 mb-2">AI Summary</h2>
+            <div class="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{{ material_data.ai_summary }}</div>
+        </div>
+        {% endif %}
 
         <div class="reader-card rounded-xl p-3 md:p-5">
             <div class="overflow-auto">
@@ -41,7 +51,9 @@
             </div>
         </div>
 
+        {% if not back_url %}
         <div class="text-xs text-neutral-500">Reading progress is automatically tracked for lecturer analytics.</div>
+        {% endif %}
     </main>
 </div>
 {% endblock %}
@@ -51,7 +63,7 @@
 <script id="progress-data" type="application/json">{{ (progress_data or {})|tojson }}</script>
 <script>
 const user = AUTH.getUser();
-if (!user || user.role !== 'student') {
+if (!user || !['student', 'lecturer'].includes(user.role)) {
     window.location.href = '/login';
 }
 
@@ -105,6 +117,7 @@ async function renderPage(pageNumber) {
 }
 
 async function syncProgress(extra = {}) {
+    if (user.role !== 'student') return;
     const payload = {
         last_page: currentPage,
         total_pages: totalPages,
@@ -140,11 +153,16 @@ document.getElementById('next-page').addEventListener('click', async () => {
     currentPage = Math.min(Math.max(savedPage, 1), totalPages);
     queueRender(currentPage);
 
-    await syncProgress({ has_opened: true });
+    if (user.role === 'student') {
+        await syncProgress({ has_opened: true });
 
-    setInterval(() => {
-        syncProgress({ time_spent_seconds: 15 });
-    }, 15000);
+        setInterval(() => {
+            syncProgress({ time_spent_seconds: 15 });
+        }, 15000);
+    } else {
+        const meta = document.getElementById('progress-meta');
+        if (meta) meta.classList.add('hidden');
+    }
 })();
 </script>
 {% endblock %}

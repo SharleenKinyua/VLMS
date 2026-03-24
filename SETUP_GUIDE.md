@@ -1,6 +1,7 @@
 # VLMS (Virtual Learning Management System) — Complete Setup Guide (New Laptop)
 
 This guide is a full, start-to-finish setup for running this project on a **new laptop**.
+Follow each step in order. No steps are optional unless marked as optional.
 
 ---
 
@@ -37,11 +38,18 @@ Install these first:
    - Download: https://ollama.com/download
    - After install, pull at least one model:
      ```powershell
-     ollama pull llama3
+     ollama pull llama3.2:1b
      ```
-   - `mistral` also works:
+   - `mistral` or `llama3.2:3b` also works (slower but higher quality):
      ```powershell
      ollama pull mistral
+     ```
+
+6. **Tesseract OCR** (recommended for scanned PDFs)
+   - Required to summarize image-based PDFs.
+   - Install via winget:
+     ```powershell
+     winget install --id UB-Mannheim.TesseractOCR -e
      ```
 
 ---
@@ -98,6 +106,7 @@ pip install -r requirements.txt
 Notes:
 - First install can take time because of heavy packages (`torch`, `opencv-python`).
 - If `mysqlclient` fails to build, install the Visual C++ tools from step 1.4, then retry.
+- If PDF summarization fails on scanned files, ensure Tesseract is installed (step 1.6).
 
 ---
 
@@ -130,6 +139,12 @@ SECRET_KEY=change-this-secret-key
 JWT_SECRET_KEY=change-this-jwt-secret
 DATABASE_URL=mysql://root:@localhost/aura_edu
 FLASK_ENV=development
+FLASK_DEBUG=1
+OLLAMA_MODEL=llama3.2:1b
+OLLAMA_TIMEOUT=15
+OCR_MAX_PAGES=5
+OCR_SCALE=1.5
+TESSERACT_CMD=C:\\Program Files\\Tesseract-OCR\\tesseract.exe
 ```
 
 If MySQL `root` has a password:
@@ -140,7 +155,19 @@ DATABASE_URL=mysql://root:YOUR_PASSWORD@localhost/aura_edu
 
 ---
 
-## 7) Run the App
+## 7) Initialize or Migrate Database (Only If Needed)
+
+If you are reusing an **old existing** `aura_edu` database (from older project versions), run:
+
+```powershell
+python _migrate.py
+```
+
+For a brand-new database, you can skip this step.
+
+---
+
+## 8) Run the App
 
 ```powershell
 python app.py
@@ -156,7 +183,7 @@ Open browser:
 
 ---
 
-## 8) Default Admin Login (First Run)
+## 9) Default Admin Login (First Run)
 
 The app seeds this admin user automatically:
 
@@ -168,27 +195,22 @@ Change credentials after first login for security.
 
 ---
 
-## 9) Optional AI Setup (Ollama Features)
+## 10) Optional AI Setup (Ollama Features)
 
 AI-powered summarization/question generation will use Ollama if available.
 
 1. Start Ollama app/service.
 2. Confirm Ollama endpoint is available (`http://localhost:11434`).
-3. Ensure at least one model is pulled (recommended: `llama3` or `mistral`).
+3. Ensure at least one model is pulled (recommended: `llama3.2:1b` for speed).
 
 If Ollama is not available, the app still runs; AI features fall back or become limited.
 
----
-
-## 10) Optional: Migration Script for Older Databases
-
-If you are reusing an **old existing** `aura_edu` database (from older project versions), run:
-
-```powershell
-python _migrate.py
-```
-
-For a brand-new database on a new laptop, this is usually not required.
+### OCR Notes (Scanned PDFs)
+- For image-based PDFs, OCR is required to extract text.
+- Tesseract path is set via `TESSERACT_CMD` (defaults to `C:\Program Files\Tesseract-OCR\tesseract.exe`).
+- You can tune OCR performance using:
+  - `OCR_MAX_PAGES` (default 5)
+  - `OCR_SCALE` (default 1.5)
 
 ---
 
@@ -236,8 +258,12 @@ Then reactivate:
 - Ensure Ollama is running.
 - Pull a model:
   ```powershell
-  ollama pull llama3
+  ollama pull llama3.2:1b
   ```
+
+### G) OCR not working on scanned PDFs
+- Ensure Tesseract is installed and `TESSERACT_CMD` points to the correct path.
+- Confirm `pytesseract` is installed via `pip install -r requirements.txt`.
 
 ---
 
@@ -252,6 +278,8 @@ Use this to confirm setup is complete:
 - [ ] `.env` exists in project root
 - [ ] `python app.py` starts without errors
 - [ ] Login works at `http://localhost:5000`
+- [ ] AI summary works on a text-based PDF (optional)
+- [ ] OCR works on a scanned PDF (optional)
 
 ---
 

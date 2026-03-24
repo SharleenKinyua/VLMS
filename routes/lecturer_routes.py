@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, render_template, current_app
 from flask_jwt_extended import jwt_required
 from database.models import (
     db, Course, Lecture, Material, Exam, Question, Submission,
-    Answer, Enrollment, Violation, User, LiveClass
+    Answer, Enrollment, Violation, User, LiveClass, LearningProgress
 )
 from utils.security import role_required, get_identity
 from utils.helpers import paginate_query, save_uploaded_file, allowed_file
@@ -90,6 +90,34 @@ def validate_assessment_type_availability(course_id, assessment_type):
 @role_required('lecturer')
 def dashboard():
     return render_template('lecturer_panel.html')
+
+
+@lecturer_bp.route('/lecturer/materials/<int:material_id>/read')
+@jwt_required()
+@role_required('lecturer')
+def read_material_lecturer(material_id):
+    identity = get_identity()
+    material = Material.query.get(material_id)
+    if not material:
+        return render_template('lecturer_panel.html')
+
+    course = Course.query.filter_by(id=material.course_id, lecturer_id=identity['id']).first()
+    if not course:
+        return render_template('lecturer_panel.html')
+
+    if material.file_type != 'pdf':
+        return render_template('lecturer_panel.html')
+
+    material_data = material.to_dict()
+    material_data['file_url'] = f"/uploads/{material.file_path}"
+    material_data['course_title'] = material.course.title if material.course else None
+
+    return render_template(
+        'material_reader.html',
+        material_data=material_data,
+        progress_data=None,
+        back_url='/lecturer/dashboard?view=materials',
+    )
 
 
 @lecturer_bp.route('/lecturer/classes')
@@ -214,6 +242,28 @@ def create_lecture(course_id):
     return jsonify({'message': 'Lecture created', 'lecture': lecture.to_dict()}), 201
 
 
+@lecturer_bp.route('/api/lecturer/lectures/<int:lecture_id>', methods=['PUT'])
+@jwt_required()
+@role_required('lecturer')
+def update_lecture(lecture_id):
+    identity = get_identity()
+    lecture = Lecture.query.get(lecture_id)
+    if not lecture:
+        return jsonify({'error': 'Lecture not found'}), 404
+
+    course = Course.query.filter_by(id=lecture.course_id, lecturer_id=identity['id']).first()
+    if not course:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    for field in ['title', 'content', 'duration_minutes', 'is_published', 'order_index']:
+        if field in data:
+            setattr(lecture, field, data[field])
+
+    db.session.commit()
+    return jsonify({'message': 'Lecture updated', 'lecture': lecture.to_dict()})
+
+
 # ──────────────── MATERIAL UPLOAD ────────────────
 
 @lecturer_bp.route('/api/lecturer/courses/<int:course_id>/materials', methods=['POST'])
@@ -309,12 +359,20 @@ def summarize_material(material_id):
     from utils.text_extractor import extract_text
     raw_text = extract_text(abs_path)
     if not raw_text or len(raw_text.strip()) < 50:
-        return jsonify({'error': 'Could not extract text from this file.'}), 400
+        return jsonify({
+            'error': 'Could not extract text from this file. If this is a scanned PDF, OCR is required.'
+        }), 400
 
     from ai_modules.ollama_service import summarize_text, _ollama_available
     if _ollama_available():
-        summary = summarize_text(raw_text)
+        try:
+            summary = summarize_text(raw_text)
+        except Exception:
+            summary = ''
     else:
+        summary = ''
+
+    if not summary:
         # Fallback: extractive summary using local TF-IDF summarizer
         from ai_modules.learning_ai.summarizer import TextSummarizer
         summary = TextSummarizer().summarize(raw_text, num_sentences=10)
@@ -351,8 +409,13 @@ def delete_material(material_id):
         return jsonify({'error': 'Unauthorized'}), 403
 
     abs_path = os.path.join(current_app.config['UPLOAD_FOLDER'], material.file_path)
-    db.session.delete(material)
-    db.session.commit()
+    try:
+        LearningProgress.query.filter_by(material_id=material.id).delete()
+        db.session.delete(material)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete material. Please try again.'}), 500
 
     try:
         if os.path.exists(abs_path):
@@ -590,15 +653,10 @@ def generate_exam_from_materials(course_id):
             raw_text = extract_text(abs_path)
             if raw_text and len(raw_text.strip()) >= 30:
                 combined_text += raw_text + '\n\n'
-                # Backfill the AI summary for future use
+                # Backfill a lightweight summary without blocking exam generation
                 if not mat.ai_summary:
-                    try:
-                        from ai_modules.ollama_service import summarize_text
-                        mat.ai_summary = summarize_text(raw_text)
-                        db.session.commit()
-                    except Exception:
-                        mat.ai_summary = raw_text[:2000]
-                        db.session.commit()
+                    mat.ai_summary = raw_text[:2000]
+                    db.session.commit()
 
     # 3) Also pull lecture content
     for lec in (lectures or []):
@@ -610,6 +668,9 @@ def generate_exam_from_materials(course_id):
             'error': 'Not enough text content in materials/lectures to generate questions. '
                      'Upload PDFs or documents with readable text, or add lecture content.'
         }), 400
+
+    # Cap context size to keep generation responsive
+    combined_text = combined_text[:12000]
 
     # Generate questions — try Ollama LLM first, fallback to rule-based
     generated = []
