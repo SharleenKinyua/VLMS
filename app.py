@@ -45,6 +45,11 @@ def create_app(config_name='development'):
     def uploaded_file(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+    # Serve proctoring screenshots
+    @app.route('/screenshots/<path:filename>')
+    def screenshot_file(filename):
+        return send_from_directory(app.config['SCREENSHOT_FOLDER'], filename)
+
     # Initialize database
     from database.db_init import init_database
     init_database(app)

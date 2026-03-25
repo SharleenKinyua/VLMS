@@ -1105,6 +1105,41 @@ def grade_submission(submission_id):
     return jsonify({'message': 'Submission graded', 'submission': submission.to_dict()})
 
 
+@lecturer_bp.route('/api/lecturer/submissions/<int:submission_id>/override-score', methods=['PUT'])
+@jwt_required()
+@role_required('lecturer')
+def override_submission_score(submission_id):
+    identity = get_identity()
+    submission = Submission.query.get(submission_id)
+    if not submission:
+        return jsonify({'error': 'Submission not found'}), 404
+
+    exam = Exam.query.get(submission.exam_id)
+    course = Course.query.filter_by(id=exam.course_id, lecturer_id=identity['id']).first()
+    if not course:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    score = data.get('score', None)
+    try:
+        score = float(score)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Score must be a number.'}), 400
+
+    if score < 0:
+        return jsonify({'error': 'Score must be zero or higher.'}), 400
+
+    if exam and exam.total_marks is not None and score > exam.total_marks:
+        return jsonify({'error': f'Score cannot exceed {exam.total_marks}.'}), 400
+
+    submission.total_score = score
+    submission.is_graded = True
+    submission.status = 'graded'
+    db.session.commit()
+
+    return jsonify({'message': 'Score updated', 'submission': submission.to_dict()})
+
+
 # ──────────────── ENROLLED STUDENTS ────────────────
 
 @lecturer_bp.route('/api/lecturer/courses/<int:course_id>/students', methods=['GET'])
