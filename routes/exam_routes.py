@@ -150,6 +150,33 @@ def record_tab_switch(submission_id):
     return jsonify({'risk_score': submission.risk_score, 'is_flagged': submission.is_flagged})
 
 
+@exam_bp.route('/api/exam/<int:submission_id>/copy-attempt', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def record_copy_attempt(submission_id):
+    identity = get_identity()
+    submission = Submission.query.get(submission_id)
+
+    if not submission or submission.student_id != identity['id']:
+        return jsonify({'error': 'Submission not found'}), 404
+
+    violation = Violation(
+        submission_id=submission_id,
+        violation_type='other',
+        severity=5,
+        description='Student attempted to copy or cut exam content',
+    )
+    db.session.add(violation)
+    submission.risk_score += 5
+
+    exam = Exam.query.get(submission.exam_id)
+    if submission.risk_score >= (exam.risk_threshold or 100):
+        submission.is_flagged = True
+
+    db.session.commit()
+    return jsonify({'risk_score': submission.risk_score, 'is_flagged': submission.is_flagged})
+
+
 # ──────────────── VIOLATION REPORTS ────────────────
 
 @exam_bp.route('/api/exam/<int:submission_id>/violations', methods=['GET'])

@@ -738,6 +738,16 @@
         </div>
     </div>
 </div>
+
+<div id="student-notice-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+    <div class="bg-neutral-950 rounded-2xl border border-white/10 w-full max-w-md p-6">
+        <h3 id="student-notice-title" class="text-lg font-semibold text-white">Notice</h3>
+        <p id="student-notice-message" class="text-sm text-neutral-300 mt-2">Message</p>
+        <div class="mt-5 flex justify-end">
+            <button onclick="closeStudentNotice()" class="px-4 py-2 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition">OK</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -1047,7 +1057,7 @@ function renderAssessmentButtons(courseId) {
             ? 'bg-white/15 hover:bg-white/25 text-white'
             : 'bg-white/10 text-neutral-400 cursor-not-allowed';
 
-        const handler = isOpen ? `startExam(${exam.id})` : `alert('${item.label} is not open yet.')`;
+        const handler = isOpen ? `startExam(${exam.id})` : `showStudentNotice('${item.label} is not open yet.')`;
 
         return `<button onclick="${handler}" class="${classes} text-xs px-3 py-2 rounded-lg transition-all duration-200">${label}</button>`;
     }).join('');
@@ -1095,7 +1105,7 @@ async function registerCourse(courseId) {
         loadDashboard();
     } else {
         const err = await resp.json().catch(() => ({}));
-        alert(err.error || 'Failed to register for course.');
+        showStudentNotice(err.error || 'Failed to register for course.');
         if (btn) { btn.textContent = 'Register'; btn.disabled = false; }
     }
 }
@@ -2019,13 +2029,23 @@ async function enrollCourse(courseId) {
     }
 }
 
+function showStudentNotice(message, title = 'Notice') {
+    document.getElementById('student-notice-title').textContent = title;
+    document.getElementById('student-notice-message').textContent = message;
+    document.getElementById('student-notice-modal').classList.remove('hidden');
+}
+
+function closeStudentNotice() {
+    document.getElementById('student-notice-modal').classList.add('hidden');
+}
+
 function startExam(examId) {
     // Double-check via API that exam is open before navigating
     AUTH.fetch(`/api/student/exams/${examId}/start`, { method: 'POST' }).then(resp => {
         if (resp.ok) {
             window.location.href = `/exam/${examId}`;
         } else {
-            resp.json().then(d => alert(d.error || 'Cannot start exam.')).catch(() => alert('Cannot start this exam yet.'));
+            resp.json().then(d => showStudentNotice(d.error || 'Cannot start exam.')).catch(() => showStudentNotice('Cannot start this exam yet.'));
         }
     });
 }
@@ -2339,7 +2359,7 @@ async function uploadProfilePhoto(input) {
         loadProfilePage();
     } else {
         const err = await resp.json();
-        alert(err.error || 'Failed to upload image');
+        showStudentNotice(err.error || 'Failed to upload image');
     }
 }
 

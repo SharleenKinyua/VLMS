@@ -1,4 +1,5 @@
 import os
+import re
 from flask import Blueprint, request, jsonify, render_template, current_app
 from flask_jwt_extended import jwt_required
 from database.models import (
@@ -67,6 +68,81 @@ def build_description_with_assessment_marker(description, assessment_type):
     return f'{marker} {base}'.strip()
 
 
+def parse_manual_questions(raw_text, default_type='short_answer', default_difficulty='understand'):
+    blocks = [b.strip() for b in re.split(r'\n\s*\n', raw_text or '') if b.strip()]
+    questions = []
+
+    for block in blocks:
+        lines = [l.strip() for l in block.splitlines() if l.strip()]
+        if not lines:
+            continue
+
+        question_lines = []
+        options = []
+        correct_answer = None
+        marks = None
+        qtype = None
+
+        for line in lines:
+            lower = line.lower()
+            if lower.startswith('type:'):
+                qtype = line.split(':', 1)[1].strip().lower()
+                continue
+            if lower.startswith('marks:'):
+                raw_marks = line.split(':', 1)[1].strip()
+                try:
+                    marks = float(raw_marks)
+                except ValueError:
+                    marks = None
+                continue
+            if lower.startswith('answer:'):
+                correct_answer = line.split(':', 1)[1].strip()
+                continue
+
+            if re.match(r'^[A-Ha-h][\).\-\s]+', line):
+                opt_text = re.sub(r'^[A-Ha-h][\).\-\s]+', '', line).strip()
+                if opt_text:
+                    options.append(opt_text)
+                continue
+
+            if not question_lines and re.match(r'^(q\d+|\d+[\).])\s+', line, flags=re.I):
+                line = re.sub(r'^(q\d+|\d+[\).])\s+', '', line, flags=re.I)
+            question_lines.append(line)
+
+        question_text = ' '.join(question_lines).strip()
+        if not question_text:
+            continue
+
+        if not qtype:
+            qtype = 'mcq' if options else default_type
+        if qtype not in {'mcq', 'short_answer', 'essay'}:
+            qtype = default_type
+
+        if qtype == 'mcq' and options:
+            if correct_answer is not None:
+                raw_answer = str(correct_answer).strip()
+                if re.match(r'^[A-Ha-h]$', raw_answer):
+                    correct_answer = ord(raw_answer.upper()) - ord('A')
+                else:
+                    match_index = next((i for i, opt in enumerate(options) if opt.lower() == raw_answer.lower()), None)
+                    if match_index is not None:
+                        correct_answer = match_index
+        elif qtype != 'mcq':
+            if isinstance(correct_answer, str) and not correct_answer.strip():
+                correct_answer = None
+
+        questions.append({
+            'question_text': question_text,
+            'question_type': qtype,
+            'options': options or None,
+            'correct_answer': correct_answer,
+            'marks': marks,
+            'difficulty': default_difficulty,
+        })
+
+    return questions
+
+
 def get_existing_assessment_types(course_id):
     exams = Exam.query.filter_by(course_id=course_id).all()
     return {infer_assessment_type(exam) for exam in exams}
@@ -90,6 +166,20 @@ def validate_assessment_type_availability(course_id, assessment_type):
 @role_required('lecturer')
 def dashboard():
     return render_template('lecturer_panel.html')
+
+
+@lecturer_bp.route('/lecturer/exams/manual')
+@jwt_required()
+@role_required('lecturer')
+def manual_exam_builder():
+    identity = get_identity()
+    courses = Course.query.filter_by(lecturer_id=identity['id']).order_by(Course.title.asc()).all()
+    selected_course_id = request.args.get('course_id', type=int)
+    return render_template(
+        'manual_exam.html',
+        courses=[c.to_dict() for c in courses],
+        selected_course_id=selected_course_id,
+    )
 
 
 @lecturer_bp.route('/lecturer/materials/<int:material_id>/read')
@@ -472,6 +562,97 @@ def create_exam(course_id):
     db.session.add(exam)
     db.session.commit()
     return jsonify({'message': 'Exam created', 'exam': exam.to_dict()}), 201
+
+
+@lecturer_bp.route('/api/lecturer/courses/<int:course_id>/exams/manual', methods=['POST'])
+@jwt_required()
+@role_required('lecturer')
+def create_manual_exam(course_id):
+    identity = get_identity()
+    course = Course.query.filter_by(id=course_id, lecturer_id=identity['id']).first()
+    if not course:
+        return jsonify({'error': 'Course not found'}), 404
+
+    data = request.get_json() or {}
+    assessment_type = (data.get('assessment_type') or '').lower()
+    if assessment_type not in ASSESSMENT_TOTAL_MARKS:
+        assessment_type = 'cat1'
+
+    assessment_error = validate_assessment_type_availability(course_id, assessment_type)
+    if assessment_error:
+        return jsonify({'error': assessment_error}), 400
+
+    questions_text = (data.get('questions_text') or '').strip()
+    if not questions_text:
+        return jsonify({'error': 'Paste at least one question to continue.'}), 400
+
+    default_type = (data.get('default_question_type') or 'short_answer').lower()
+    default_difficulty = (data.get('difficulty') or 'understand').lower()
+    questions = parse_manual_questions(questions_text, default_type, default_difficulty)
+    if not questions:
+        return jsonify({'error': 'Could not parse any questions from the pasted text.'}), 400
+
+    mapped_exam_type = map_assessment_type_to_exam_type(assessment_type)
+    duration = int(data.get('duration_minutes') or 60)
+    start = datetime.fromisoformat(data['start_time']) if data.get('start_time') else None
+    end = datetime.fromisoformat(data['end_time']) if data.get('end_time') else None
+    if start and (not end or end <= start):
+        end = start + timedelta(minutes=duration)
+
+    total_marks = int(data.get('total_marks') or ASSESSMENT_TOTAL_MARKS[assessment_type])
+    total_marks = max(1, total_marks)
+    any_marks = any(q.get('marks') is not None for q in questions)
+
+    if not any_marks:
+        base_marks = total_marks // len(questions)
+        remainder = total_marks % len(questions)
+        for idx, q in enumerate(questions):
+            q['marks'] = base_marks + (1 if idx < remainder else 0)
+    else:
+        for q in questions:
+            if q.get('marks') is None:
+                q['marks'] = 1
+        if not data.get('total_marks'):
+            total_marks = int(sum(q.get('marks') or 0 for q in questions) or total_marks)
+
+    passing_marks = int(data.get('passing_marks') or max(1, int(total_marks * 0.5)))
+
+    exam = Exam(
+        course_id=course_id,
+        title=data.get('title', 'Untitled Exam'),
+        description=build_description_with_assessment_marker('Manual exam entry.', assessment_type),
+        exam_type=mapped_exam_type,
+        duration_minutes=duration,
+        total_marks=total_marks,
+        passing_marks=passing_marks,
+        start_time=start,
+        end_time=end,
+        is_proctored=data.get('is_proctored', True),
+        shuffle_questions=True,
+        is_published=False,
+    )
+    db.session.add(exam)
+    db.session.flush()
+
+    for idx, q in enumerate(questions):
+        question = Question(
+            exam_id=exam.id,
+            question_text=q['question_text'],
+            question_type=q['question_type'],
+            options=q.get('options'),
+            correct_answer=q.get('correct_answer'),
+            marks=q.get('marks', 1),
+            difficulty=q.get('difficulty', default_difficulty),
+            order_index=idx,
+        )
+        db.session.add(question)
+
+    db.session.commit()
+    return jsonify({
+        'message': 'Manual exam created. Review and publish when ready.',
+        'exam': exam.to_dict(),
+        'questions': [q.to_dict(include_answer=True) for q in exam.questions.order_by(Question.order_index).all()],
+    }), 201
 
 
 @lecturer_bp.route('/api/lecturer/exams/<int:exam_id>/questions', methods=['POST'])

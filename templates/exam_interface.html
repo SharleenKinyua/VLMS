@@ -10,13 +10,13 @@
             linear-gradient(180deg, #050505 0%, #0a0a0a 45%, #000000 100%);
     }
     .glass-card {
-        background: rgba(17, 24, 39, 0.72);
+        background: rgba(0, 0, 0, 0.72);
         border: 1px solid rgba(148, 163, 184, 0.18);
         -webkit-backdrop-filter: blur(12px);
         backdrop-filter: blur(12px);
     }
     .glass-nav {
-        background: rgba(2, 6, 23, 0.75);
+        background: rgba(0, 0, 0, 0.75);
         border-bottom: 1px solid rgba(148, 163, 184, 0.15);
         -webkit-backdrop-filter: blur(14px);
         backdrop-filter: blur(14px);
@@ -34,6 +34,11 @@
         transform: translateY(-2px);
         border-color: rgba(255, 255, 255, 0.28);
         box-shadow: 0 14px 30px rgba(2, 6, 23, 0.35);
+    }
+    .no-copy {
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
     }
     .option-row {
         transition: all .22s ease;
@@ -65,6 +70,9 @@
     .modal-pop {
         animation: modalPop .25s cubic-bezier(.4,0,.2,1) both;
     }
+    .modal-slide {
+        animation: modalSlide .35s cubic-bezier(.4,0,.2,1) both;
+    }
     @keyframes fadeUp {
         from { opacity: 0; transform: translateY(12px); }
         to { opacity: 1; transform: translateY(0); }
@@ -76,6 +84,10 @@
     @keyframes modalPop {
         from { opacity: 0; transform: translateY(10px) scale(.98); }
         to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes modalSlide {
+        from { opacity: 0; transform: translateY(18px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 </style>
 {% endblock %}
@@ -149,10 +161,7 @@
                 <p id="violation-msg" class="text-xs text-red-300 mt-1"></p>
             </div>
         </div>
-    </div>
-</div>
-
-<div id="submit-confirm-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm p-4">
+    <div id="submit-confirm-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm p-4">
     <div class="max-w-md mx-auto mt-24 glass-card rounded-2xl p-5 modal-pop border border-white/20">
         <h3 class="text-lg font-semibold text-white">Submit Exam?</h3>
         <p class="text-sm text-slate-300 mt-2">Are you sure you want to submit? You cannot change answers after submission.</p>
@@ -160,6 +169,32 @@
             <button onclick="closeSubmitModal()" class="px-4 py-2 rounded-lg border border-white/20 text-slate-200 hover:bg-white/10 transition">Cancel</button>
             <button onclick="confirmSubmitExam()" class="px-4 py-2 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition">Submit</button>
         </div>
+    </div>
+    </div>
+
+    <div id="submit-success-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm p-4">
+    <div class="max-w-md mx-auto mt-24 glass-card rounded-2xl p-6 modal-slide border border-white/20">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center font-bold">OK</div>
+            <div>
+                <h3 class="text-lg font-semibold text-white">Exam Submitted</h3>
+                <p class="text-sm text-slate-300 mt-1">Your submission was received. Results will appear after release.</p>
+            </div>
+        </div>
+        <div class="mt-5 flex justify-end">
+            <button onclick="closeSubmitSuccess()" class="px-4 py-2 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition">Continue</button>
+        </div>
+    </div>
+    </div>
+
+    <div id="exam-notice-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm p-4">
+    <div class="max-w-md mx-auto mt-24 glass-card rounded-2xl p-6 modal-slide border border-white/20">
+        <h3 id="exam-notice-title" class="text-lg font-semibold text-white">Notice</h3>
+        <p id="exam-notice-message" class="text-sm text-slate-300 mt-2">Message</p>
+        <div class="mt-5 flex justify-end">
+            <button onclick="closeExamNotice()" class="px-4 py-2 rounded-lg bg-white text-black font-semibold hover:bg-neutral-200 transition">OK</button>
+        </div>
+    </div>
     </div>
 </div>
 {% endblock %}
@@ -172,9 +207,15 @@ if (!user || user.role !== 'student') { window.location.href = '/login'; }
 const examId = Number(document.getElementById('exam-root')?.dataset?.examId || 0);
 let submissionId = null;
 let questions = [];
+let currentQuestionIndex = 0;
+let currentAnswerValue = null;
+let answersByQuestion = {};
 let timerInterval = null;
 let proctorInterval = null;
 let stream = null;
+let warnedFiveMinutes = false;
+let warnedTwoMinutes = false;
+let examNoticeTimeout = null;
 
 // ─── Initialize Camera ───
 async function initCamera() {
@@ -213,6 +254,10 @@ async function verifyFace() {
     const startData = await startResp.json();
     submissionId = startData.submission_id;
     questions = startData.questions;
+    answersByQuestion = (startData.answers || []).reduce((acc, ans) => {
+        acc[ans.question_id] = ans;
+        return acc;
+    }, {});
 
     // Capture frame for face verification
     const frame = captureFrame();
@@ -230,6 +275,9 @@ async function verifyFace() {
         startTimer(startData.remaining_seconds ?? (startData.exam.duration_minutes * 60));
         startProctoring();
         setupTabDetection();
+        setupCopyProtection();
+        setupFullscreenGuard();
+        requestFullscreen();
     } else {
         status.innerHTML = '<span class="text-red-400">Face verification failed — your face does not match your registered profile. Please try again or update your face registration in your Profile.</span>';
         btn.disabled = false;
@@ -250,90 +298,139 @@ function captureFrame() {
 function renderQuestions() {
     const container = document.getElementById('questions-container');
     const nav = document.getElementById('question-nav');
-
-    container.innerHTML = questions.map((q, i) => `
-        <div id="q-${q.id}" class="glass-card question-card rounded-2xl p-6 fade-up" style="animation-delay:${Math.min(i * 45, 360)}ms">
-            <div class="flex justify-between items-start mb-4">
-                <span class="bg-white/10 border border-white/20 text-white text-xs font-medium px-2 py-1 rounded-lg">Q${i + 1}</span>
-                <span class="text-xs text-slate-400">${q.marks} marks • ${q.difficulty}</span>
-            </div>
-            <p class="text-slate-100 mb-4 leading-relaxed">${q.question_text}</p>
-            ${q.question_type === 'mcq' ? renderMCQ(q) : renderTextAnswer(q)}
-        </div>
-    `).join('');
-
-    nav.innerHTML = questions.map((q, i) => `
-        <button onclick="goToQuestion(${q.id}, this)"
-                class="w-10 h-10 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 text-xs font-medium answer-nav"
-                data-qid="${q.id}">${i + 1}</button>
-    `).join('');
-
-    setupQuestionObserver();
+    currentQuestionIndex = 0;
+    const firstUnanswered = findFirstUnansweredIndex();
+    if (firstUnanswered !== -1) currentQuestionIndex = firstUnanswered;
+    renderCurrentQuestion();
+    nav.innerHTML = `<div class="text-sm text-slate-300">Question ${currentQuestionIndex + 1} of ${questions.length}</div>`;
 }
 
-function renderMCQ(q) {
+function renderCurrentQuestion() {
+    const container = document.getElementById('questions-container');
+    const nav = document.getElementById('question-nav');
+    const q = questions[currentQuestionIndex];
+    if (!q) {
+        container.innerHTML = '<div class="glass-card rounded-2xl p-6 text-center">All questions completed. You can submit your exam now.</div>';
+        nav.innerHTML = `<div class="text-sm text-slate-300">Completed</div>`;
+        return;
+    }
+
+    const existing = answersByQuestion[q.id] || null;
+    currentAnswerValue = null;
+    container.innerHTML = `
+        <div id="q-${q.id}" class="glass-card question-card rounded-2xl p-6 fade-up">
+            <div class="flex justify-between items-start mb-4">
+                <span class="bg-white/10 border border-white/20 text-white text-xs font-medium px-2 py-1 rounded-lg">Q${currentQuestionIndex + 1}</span>
+                <span class="text-xs text-slate-400">${q.marks} marks • ${q.difficulty}</span>
+            </div>
+            <p class="text-slate-100 mb-4 leading-relaxed no-copy">${q.question_text}</p>
+            ${q.question_type === 'mcq' ? renderMCQ(q, existing) : renderTextAnswer(q, existing)}
+            <div class="mt-4 flex justify-end">
+                <button onclick="submitCurrentAnswer()" class="bg-white text-black px-4 py-2 rounded-lg text-sm font-semibold hover:bg-neutral-200 transition">
+                    Submit Answer
+                </button>
+            </div>
+        </div>
+    `;
+
+    if (existing) {
+        if (q.question_type === 'mcq' && existing.selected_option !== null && existing.selected_option !== undefined) {
+            currentAnswerValue = existing.selected_option;
+        } else if (q.question_type !== 'mcq' && existing.answer_text) {
+            currentAnswerValue = existing.answer_text;
+        }
+    }
+    nav.innerHTML = `<div class="text-sm text-slate-300">Question ${currentQuestionIndex + 1} of ${questions.length}</div>`;
+}
+
+function renderMCQ(q, existing) {
+    const selected = existing ? existing.selected_option : null;
     return q.options.map((opt, i) => `
-        <label class="option-row flex items-center space-x-3 p-3 rounded-xl bg-slate-800/35 hover:bg-slate-700/40 border border-slate-700/60 cursor-pointer mb-2">
-            <input type="radio" name="q_${q.id}" value="${i}" onchange="saveAnswer(${q.id}, 'mcq', ${i})"
+        <label class="option-row no-copy flex items-center space-x-3 p-3 rounded-xl bg-slate-800/35 hover:bg-slate-700/40 border border-slate-700/60 cursor-pointer mb-2">
+            <input type="radio" name="q_${q.id}" value="${i}" onchange="setCurrentAnswer('mcq', ${i})" ${selected === i ? 'checked' : ''}
                    class="w-4 h-4 text-white">
             <span class="text-slate-200">${opt}</span>
         </label>
     `).join('');
 }
 
-function renderTextAnswer(q) {
-    return `<textarea onchange="saveAnswer(${q.id}, '${q.question_type}', this.value)"
+function renderTextAnswer(q, existing) {
+    const text = existing && existing.answer_text ? existing.answer_text : '';
+    return `<textarea oninput="setCurrentAnswer('${q.question_type}', this.value)"
                       class="w-full bg-slate-900/60 text-slate-100 border border-slate-700 rounded-xl p-3 focus:ring-2 focus:ring-white/40 outline-none transition"
                       rows="${q.question_type === 'essay' ? 8 : 3}"
-                      placeholder="Type your answer..."></textarea>`;
+                      placeholder="Type your answer...">${text}</textarea>`;
 }
 
-function goToQuestion(questionId, btn) {
-    document.querySelectorAll('.answer-nav').forEach(b => b.classList.remove('current'));
-    if (btn) btn.classList.add('current');
-    document.getElementById(`q-${questionId}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+function setCurrentAnswer(type, value) {
+    if (type === 'mcq') currentAnswerValue = value;
+    else currentAnswerValue = (value || '').trim();
 }
 
-function setupQuestionObserver() {
-    const cards = document.querySelectorAll('[id^="q-"]');
-    const navButtons = document.querySelectorAll('.answer-nav');
-    if (!cards.length || !navButtons.length) return;
+async function submitCurrentAnswer() {
+    const q = questions[currentQuestionIndex];
+    if (!q) return;
+    if (currentAnswerValue === null || currentAnswerValue === '') {
+        showExamNotice('Please provide an answer before continuing.');
+        return;
+    }
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (!entry.isIntersecting) return;
-            const qid = entry.target.id.replace('q-', '');
-            navButtons.forEach(b => b.classList.remove('current'));
-            const active = document.querySelector(`.answer-nav[data-qid="${qid}"]`);
-            if (active) active.classList.add('current');
-        });
-    }, { threshold: 0.45 });
+    const ok = await saveAnswer(q.id, q.question_type, currentAnswerValue, true);
+    if (!ok) return;
 
-    cards.forEach(card => observer.observe(card));
+    if (currentQuestionIndex >= questions.length - 1) {
+        submitExam(true);
+        return;
+    }
+
+    currentQuestionIndex += 1;
+    renderCurrentQuestion();
 }
 
 // ─── Save Answer ───
-async function saveAnswer(questionId, type, value) {
+async function saveAnswer(questionId, type, value, silent = false) {
     const body = { question_id: questionId };
     if (type === 'mcq') body.selected_option = value;
     else body.answer_text = value;
+    if (type === 'mcq') {
+        answersByQuestion[questionId] = { question_id: questionId, selected_option: value, answer_text: null };
+    } else {
+        answersByQuestion[questionId] = { question_id: questionId, selected_option: null, answer_text: value };
+    }
 
-    await AUTH.fetch(`/api/student/exams/${submissionId}/answer`, {
+    const resp = await AUTH.fetch(`/api/student/exams/${submissionId}/answer`, {
         method: 'POST',
         body: JSON.stringify(body),
     });
 
-    // Mark question as answered in nav
-    const navBtn = document.querySelector(`[data-qid="${questionId}"]`);
-    if (navBtn) {
-        navBtn.classList.remove('bg-slate-700');
-        navBtn.classList.add('bg-white', 'text-black', 'border-white');
+    if (!resp.ok) {
+        if (!silent) showExamNotice('Failed to save answer. Please try again.');
+        return false;
     }
+
+    return true;
+}
+
+function findFirstUnansweredIndex() {
+    for (let i = 0; i < questions.length; i += 1) {
+        const q = questions[i];
+        const ans = answersByQuestion[q.id];
+        if (!ans) return i;
+        if (q.question_type === 'mcq') {
+            if (ans.selected_option === null || ans.selected_option === undefined) return i;
+        } else {
+            if (!ans.answer_text) return i;
+        }
+    }
+    return -1;
 }
 
 // ─── Timer ───
 function startTimer(seconds) {
     let remaining = seconds;
+    let prevRemaining = seconds;
+    warnedFiveMinutes = false;
+    warnedTwoMinutes = false;
     const timerEl = document.getElementById('timer');
     timerInterval = setInterval(() => {
         remaining--;
@@ -342,6 +439,15 @@ function startTimer(seconds) {
         timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 
         if (remaining <= 300) timerEl.classList.replace('text-yellow-400', 'text-red-400');
+        if (!warnedFiveMinutes && prevRemaining > 300 && remaining <= 300) {
+            warnedFiveMinutes = true;
+            showExamNotice('5 minutes remaining. Please wrap up your answers.');
+        }
+        if (!warnedTwoMinutes && prevRemaining > 120 && remaining <= 120 && remaining > 0) {
+            warnedTwoMinutes = true;
+            showExamNotice('2 minutes remaining. Your exam will submit automatically when time is up.');
+        }
+        prevRemaining = remaining;
         if (remaining <= 0) { clearInterval(timerInterval); submitExam(true); }
     }, 1000);
 }
@@ -389,6 +495,75 @@ function setupTabDetection() {
     });
 }
 
+function showCopyWarning(message) {
+    const alertDiv = document.getElementById('violation-alert');
+    const msgEl = document.getElementById('violation-msg');
+    if (!alertDiv || !msgEl) return;
+    alertDiv.classList.remove('hidden');
+    msgEl.textContent = message;
+    setTimeout(() => alertDiv.classList.add('hidden'), 3000);
+}
+
+function setupCopyProtection() {
+    const panel = document.getElementById('questions-panel');
+    if (!panel) return;
+
+    const isEditableTarget = (target) => {
+        if (!target) return false;
+        const tag = target.tagName ? target.tagName.toLowerCase() : '';
+        return tag === 'textarea' || tag === 'input' || target.isContentEditable;
+    };
+
+    ['copy', 'cut', 'contextmenu'].forEach((evtName) => {
+        panel.addEventListener(evtName, (e) => {
+            if (isEditableTarget(e.target)) return;
+            e.preventDefault();
+            showCopyWarning('Copy and cut are disabled during the exam.');
+            if (submissionId) {
+                AUTH.fetch(`/api/exam/${submissionId}/copy-attempt`, { method: 'POST' });
+            }
+        });
+    });
+}
+
+function requestFullscreen() {
+    const root = document.getElementById('exam-root');
+    if (!root) return;
+    const req = root.requestFullscreen || root.webkitRequestFullscreen || root.msRequestFullscreen;
+    if (req) {
+        req.call(root).catch(() => {
+            forceExitExam('Fullscreen is required for this exam.');
+        });
+        return;
+    }
+    forceExitExam('Fullscreen is required for this exam.');
+}
+
+function setupFullscreenGuard() {
+    const onChange = async () => {
+        const isFull = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        if (!isFull && submissionId) {
+            forceExitExam('Fullscreen exited. You have been exited from the exam.');
+        }
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    document.addEventListener('msfullscreenchange', onChange);
+}
+
+async function forceExitExam(message) {
+    showCopyWarning(message);
+    if (submissionId) {
+        await AUTH.fetch(`/api/exam/${submissionId}/tab-switch`, { method: 'POST' });
+    }
+    clearInterval(timerInterval);
+    clearInterval(proctorInterval);
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    setTimeout(() => {
+        window.location.href = '/student/dashboard?view=exams';
+    }, 800);
+}
+
 function openSubmitModal() {
     document.getElementById('submit-confirm-modal').classList.remove('hidden');
 }
@@ -397,17 +572,59 @@ function closeSubmitModal() {
     document.getElementById('submit-confirm-modal').classList.add('hidden');
 }
 
+function openSubmitSuccess() {
+    document.getElementById('submit-success-modal').classList.remove('hidden');
+}
+
+function closeSubmitSuccess() {
+    document.getElementById('submit-success-modal').classList.add('hidden');
+    window.location.href = '/student/dashboard?view=exams';
+}
+
+function showExamNotice(message, title = 'Notice') {
+    document.getElementById('exam-notice-title').textContent = title;
+    document.getElementById('exam-notice-message').textContent = message;
+    const noticeModal = document.getElementById('exam-notice-modal');
+    const isAlreadySubmitted = message.toLowerCase().includes('already submitted');
+    noticeModal.dataset.redirectAfterClose = isAlreadySubmitted ? 'results' : '';
+    noticeModal.classList.remove('hidden');
+    if (examNoticeTimeout) clearTimeout(examNoticeTimeout);
+    examNoticeTimeout = setTimeout(() => {
+        closeExamNotice();
+    }, 4000);
+}
+
+function closeExamNotice() {
+    const noticeModal = document.getElementById('exam-notice-modal');
+    const redirect = noticeModal.dataset.redirectAfterClose;
+    noticeModal.classList.add('hidden');
+    if (redirect === 'results') {
+        window.location.href = '/student/dashboard?view=exams';
+    }
+}
+
 function confirmSubmitExam() {
     closeSubmitModal();
     submitExam(true);
 }
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeSubmitModal();
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        forceExitExam('You exited the exam.');
+    }
 });
 
 document.getElementById('submit-confirm-modal').addEventListener('click', (e) => {
     if (e.target.id === 'submit-confirm-modal') closeSubmitModal();
+});
+
+document.getElementById('submit-success-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'submit-success-modal') closeSubmitSuccess();
+});
+
+document.getElementById('exam-notice-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'exam-notice-modal') closeExamNotice();
 });
 
 // ─── Submit Exam ───
@@ -423,10 +640,13 @@ async function submitExam(autoSubmit = false) {
 
     const resp = await AUTH.fetch(`/api/student/exams/${submissionId}/submit`, { method: 'POST' });
     if (resp.ok) {
-        const data = await resp.json();
-        alert(`Exam submitted! ${data.submission.total_score !== null ? 'Score: ' + data.submission.total_score : 'Grading in progress.'}`);
+        await resp.json().catch(() => ({}));
         if (stream) stream.getTracks().forEach(t => t.stop());
-        window.location.href = '/student/dashboard';
+        const exitFull = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+        if (exitFull) {
+            try { await exitFull.call(document); } catch (_) {}
+        }
+        openSubmitSuccess();
     }
 }
 

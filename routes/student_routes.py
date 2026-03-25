@@ -425,11 +425,13 @@ def start_exam(exam_id):
     # Get questions (without correct answers)
     questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.order_index).all()
     remaining_seconds = _submission_remaining_seconds(existing, exam)
+    answers = Answer.query.filter_by(submission_id=existing.id).all()
     return jsonify({
         'submission_id': existing.id,
         'exam': exam.to_dict(),
         'remaining_seconds': remaining_seconds,
         'questions': [q.to_dict(include_answer=False) for q in questions],
+        'answers': [a.to_dict() for a in answers],
     })
 
 

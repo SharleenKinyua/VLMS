@@ -1,0 +1,448 @@
+{% extends "base.html" %}
+{% block title %}Manual Exam — MindStack{% endblock %}
+
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; letter-spacing: -0.011em; }
+    .glass-nav-light { background: rgba(255, 255, 255, 0.85); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
+    .glass-nav-light.scrolled { background: rgba(255, 255, 255, 0.95); box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); }
+    .nav-pill { position: relative; transition: all 0.3s cubic-bezier(.4,0,.2,1); }
+    .nav-pill::after { content: ''; position: absolute; bottom: -2px; left: 50%; width: 0; height: 2px; background: #000; border-radius: 2px; transition: all 0.3s cubic-bezier(.4,0,.2,1); transform: translateX(-50%); }
+    .nav-pill:hover::after, .nav-pill.active::after { width: 60%; }
+    .nav-pill.active { color: #000 !important; }
+    .nav-pill:hover { transform: translateY(-1px); color: #000 !important; }
+    .dropdown-panel { opacity: 0; transform: translateY(-8px) scale(0.97); pointer-events: none; transition: all 0.25s cubic-bezier(.4,0,.2,1); }
+    .dropdown-panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+    .mobile-panel { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(.4,0,.2,1), opacity 0.25s ease; opacity: 0; }
+    .mobile-panel.open { max-height: 400px; opacity: 1; }
+    .avatar-ring { position: relative; }
+    .avatar-ring::before { content: ''; position: absolute; inset: -3px; border-radius: 9999px; background: linear-gradient(135deg, #000, #666, #000); z-index: -1; opacity: 0; transition: opacity 0.3s ease; }
+    .avatar-ring:hover::before { opacity: 1; animation: pulse-ring 2s ease-in-out infinite; }
+    @keyframes pulse-ring { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.1; transform: scale(1.1); } }
+    .logo-text { background: linear-gradient(90deg, #000 0%, #666 40%, #000 60%, #666 100%); background-size: 300% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: logo-shimmer 6s ease-in-out infinite; }
+    @keyframes logo-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: -100% 50%; } }
+    .nav-fade-in { animation: fadeUp 0.5s cubic-bezier(.4,0,.2,1) both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .nav-delay-1 { animation-delay: 0.05s; }
+    .nav-delay-2 { animation-delay: 0.1s; }
+    .nav-delay-3 { animation-delay: 0.15s; }
+    .nav-delay-4 { animation-delay: 0.2s; }
+    .nav-delay-5 { animation-delay: 0.25s; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-[#f5f5f5]">
+    {% set lecturer_active_page = 'exams' %}
+    {% include 'partials/lecturer_header.html' %}
+
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex items-center justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-semibold text-black">Manual Exam Builder</h1>
+                <p class="text-sm text-black/50">Paste questions from external sources and create a draft exam.</p>
+            </div>
+            <a href="/lecturer/dashboard?view=exams" class="text-sm bg-white text-black px-3 py-2 rounded-xl border border-black/10 hover:border-black/20 transition-all">Back to Exams</a>
+        </div>
+
+        <div id="manual-status" class="hidden rounded-xl border px-4 py-3 text-sm mb-5"></div>
+
+        <form id="manual-exam-form" class="bg-white rounded-2xl border border-black/[0.06] p-6 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Course</label>
+                    <select id="manual-course" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Exam Title</label>
+                    <input type="text" id="manual-title" required placeholder="Exam title" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Type</label>
+                    <select id="manual-type" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                        <option value="cat1">CAT 1</option>
+                        <option value="cat2">CAT 2</option>
+                        <option value="assignment">Assignment</option>
+                        <option value="main_exam">Main Exam</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Difficulty</label>
+                    <select id="manual-difficulty" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                        <option value="remember">Remember</option>
+                        <option value="understand" selected>Understand</option>
+                        <option value="apply">Apply</option>
+                        <option value="analyze">Analyze</option>
+                        <option value="evaluate">Evaluate</option>
+                        <option value="create">Create</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Duration (min)</label>
+                    <input type="number" id="manual-duration" value="60" min="5" onchange="autoCalcManualEndTime()" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Total Marks</label>
+                    <input type="number" id="manual-total-marks" value="30" min="1" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Passing Marks</label>
+                    <input type="number" id="manual-pass" value="15" min="0" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                </div>
+                <div class="flex items-center">
+                    <label class="flex items-center gap-2 text-sm text-black/70 mt-6 md:mt-0">
+                        <input type="checkbox" id="manual-proctored" checked class="w-4 h-4 accent-black rounded">
+                        AI Proctored
+                    </label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">Start Time</label>
+                    <input type="datetime-local" id="manual-start" onchange="autoCalcManualEndTime()" class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-black/60 mb-1">End Time <span class="text-black/30 font-normal">(auto-calculated)</span></label>
+                    <input type="datetime-local" id="manual-end" readonly class="w-full px-4 py-2.5 border border-black/10 rounded-xl outline-none text-black/50 bg-black/[0.02] cursor-not-allowed">
+                </div>
+            </div>
+
+            <div class="border border-black/[0.06] rounded-xl p-4 bg-black/[0.01] space-y-3">
+                <div>
+                    <p class="text-sm font-medium text-black/70">Paste Questions</p>
+                    <p class="text-xs text-black/50">Separate questions with a blank line. For MCQs, list options with A., B., C., and add Answer: A (or the option text).</p>
+                </div>
+                <textarea id="manual-questions" rows="12" class="w-full text-sm border border-black/10 rounded-xl p-3 text-black focus:ring-1 focus:ring-black/20 outline-none" placeholder="Q1. What is photosynthesis?
+A. Process of converting light to energy
+B. Movement of water in plants
+C. Photos in camera
+Answer: A
+Marks: 2
+
+Q2. Explain the importance of databases in web apps.
+Answer: ...
+Marks: 5"></textarea>
+                <pre class="text-[11px] text-black/40 bg-white border border-black/[0.06] rounded-xl p-3 whitespace-pre-wrap">Optional tags per question:
+Type: essay | short_answer | mcq
+Marks: 2
+Answer: A (or full text for non-MCQ)</pre>
+            </div>
+
+            <div class="pt-2 border-t border-black/[0.06] flex justify-end">
+                <button type="submit" id="manual-submit" class="bg-black hover:bg-black/80 text-white font-semibold py-2.5 px-6 rounded-xl transition-all">
+                    Create Draft Exam
+                </button>
+            </div>
+        </form>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const courses = {{ (courses or []) | tojson }};
+const selectedCourseId = {{ selected_course_id if selected_course_id is not none else 'null' }};
+
+let user = AUTH.getUser();
+if (!user || user.role !== 'lecturer') { window.location.href = '/login'; }
+
+function setHeaderAvatar(profile, initials) {
+    const avatarEl = document.getElementById('user-avatar');
+    if (!avatarEl) return;
+    if (profile.profile_image) {
+        const imageSrc = `/uploads/${profile.profile_image}`;
+        avatarEl.innerHTML = `<img src="${imageSrc}" class="w-full h-full object-cover rounded-full" alt="Profile image">`;
+        const avatarImg = avatarEl.querySelector('img');
+        if (avatarImg) {
+            avatarImg.onerror = () => {
+                avatarEl.textContent = initials;
+            };
+        }
+    } else {
+        avatarEl.textContent = initials;
+    }
+}
+
+function applyUserUI(profile) {
+    const displayName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Lecturer';
+    const initials = `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || 'L';
+
+    const userNameEl = document.getElementById('user-name');
+    const dropdownNameEl = document.getElementById('dropdown-name');
+    const dropdownEmailEl = document.getElementById('dropdown-email');
+    const dropdownRoleEl = document.getElementById('dropdown-role');
+    const dropdownProfileCompleteEl = document.getElementById('dropdown-profile-complete');
+    const dropdownPhoneEl = document.getElementById('dropdown-phone');
+
+    if (userNameEl) userNameEl.textContent = displayName;
+    if (dropdownNameEl) dropdownNameEl.textContent = displayName;
+    if (dropdownEmailEl) dropdownEmailEl.textContent = profile.email || '';
+    if (dropdownRoleEl) {
+        const roleLabel = (profile.role || 'lecturer');
+        dropdownRoleEl.textContent = roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1);
+    }
+    if (dropdownProfileCompleteEl) {
+        const completion = Number(profile.profile_complete || 0);
+        dropdownProfileCompleteEl.textContent = `Profile ${completion}%`;
+    }
+    if (dropdownPhoneEl) {
+        if (profile.phone_number) {
+            dropdownPhoneEl.textContent = profile.phone_number;
+            dropdownPhoneEl.classList.remove('hidden');
+        } else {
+            dropdownPhoneEl.textContent = '';
+            dropdownPhoneEl.classList.add('hidden');
+        }
+    }
+    setHeaderAvatar(profile, initials);
+}
+
+async function hydrateUserFromDatabase() {
+    if (user) applyUserUI(user);
+    try {
+        const resp = await AUTH.fetch('/api/auth/me');
+        if (!resp.ok) return;
+        const payload = await resp.json();
+        if (!payload.user) return;
+        user = payload.user;
+        AUTH.setUser(user);
+        applyUserUI(user);
+    } catch (_) {
+        return;
+    }
+}
+
+function logout() {
+    AUTH.clear();
+    window.location.href = '/login';
+}
+
+function toggleMobileNav() {
+    const mobileNav = document.getElementById('mobile-nav');
+    const isOpen = mobileNav.classList.contains('open');
+    mobileNav.classList.toggle('open');
+    document.getElementById('hamburger-icon').classList.toggle('hidden', !isOpen);
+    document.getElementById('close-icon').classList.toggle('hidden', isOpen);
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-panel').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.dropdown-chevron').forEach(c => { c.style.transform = ''; });
+}
+
+function toggleDropdown(name) {
+    const dd = document.getElementById('dropdown-' + name);
+    const isOpen = dd.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        dd.classList.add('open');
+        const btn = dd.previousElementSibling || dd.closest('.relative').querySelector('button');
+        const chevron = btn ? btn.querySelector('.dropdown-chevron') : null;
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#academics-dropdown') && !e.target.closest('#user-dropdown-wrap')) {
+        closeAllDropdowns();
+    }
+});
+
+window.addEventListener('scroll', () => {
+    const nav = document.getElementById('main-nav');
+    if (!nav) return;
+    if (window.scrollY > 10) nav.classList.add('scrolled');
+    else nav.classList.remove('scrolled');
+}, { passive: true });
+
+hydrateUserFromDatabase();
+
+const ASSESSMENT_TOTALS = {
+    cat1: 30,
+    cat2: 30,
+    assignment: 30,
+    main_exam: 70,
+};
+
+const ASSESSMENT_LABELS = {
+    cat1: 'CAT 1',
+    cat2: 'CAT 2',
+    assignment: 'Assignment',
+    main_exam: 'Main Exam',
+};
+
+const EXAM_TYPE_ORDER = ['cat1', 'cat2', 'assignment', 'main_exam'];
+
+function setStatus(message, type = 'info') {
+    const el = document.getElementById('manual-status');
+    el.textContent = message;
+    el.classList.remove('hidden');
+    el.className = 'rounded-xl border px-4 py-3 text-sm mb-5';
+    if (type === 'error') {
+        el.classList.add('border-red-200', 'bg-red-50', 'text-red-700');
+    } else if (type === 'success') {
+        el.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+    } else {
+        el.classList.add('border-black/10', 'bg-white', 'text-black/60');
+    }
+}
+
+function toLocalInputValue(date) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function setMinDateTime(inputId, minutesFromNow = 1) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const minDate = new Date(Date.now() + minutesFromNow * 60000);
+    input.min = toLocalInputValue(minDate);
+}
+
+function isFutureDateTime(value) {
+    if (!value) return true;
+    const selected = new Date(value).getTime();
+    return selected >= Date.now();
+}
+
+function autoCalcManualEndTime() {
+    const start = document.getElementById('manual-start').value;
+    const duration = parseInt(document.getElementById('manual-duration').value) || 60;
+    if (start) {
+        const endDate = new Date(new Date(start).getTime() + duration * 60000);
+        document.getElementById('manual-end').value = toLocalInputValue(endDate);
+    }
+}
+
+function hydrateCourses() {
+    const select = document.getElementById('manual-course');
+    select.innerHTML = courses.map(c => `<option value="${c.id}">${c.code} — ${c.title}</option>`).join('');
+    if (selectedCourseId) {
+        select.value = String(selectedCourseId);
+    }
+}
+
+function getAssessmentTypeFromExam(exam) {
+    const type = exam.assessment_type || exam.exam_type;
+    if (type === 'quiz') return 'cat1';
+    if (type === 'midterm') return 'cat2';
+    if (type === 'final') return 'main_exam';
+    return type;
+}
+
+function applyExamTypeOptions(exams) {
+    const typeEl = document.getElementById('manual-type');
+    if (!typeEl) return;
+
+    const currentValue = typeEl.value;
+    const existingTypes = new Set((exams || []).map(getAssessmentTypeFromExam));
+
+    typeEl.innerHTML = EXAM_TYPE_ORDER
+        .filter(type => {
+            if (type === 'cat1' || type === 'cat2' || type === 'main_exam') {
+                return !existingTypes.has(type);
+            }
+            return true;
+        })
+        .map(type => `<option value="${type}">${ASSESSMENT_LABELS[type] || type}</option>`)
+        .join('');
+
+    const canKeepCurrent = [...typeEl.options].some(option => option.value === currentValue);
+    if (canKeepCurrent) {
+        typeEl.value = currentValue;
+    } else if (typeEl.options.length > 0) {
+        typeEl.selectedIndex = 0;
+    }
+
+    const selected = typeEl.value;
+    const total = ASSESSMENT_TOTALS[selected] || 30;
+    document.getElementById('manual-total-marks').value = total;
+    document.getElementById('manual-pass').value = Math.ceil(total * 0.5);
+}
+
+async function refreshExamTypeOptions(courseId) {
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${courseId}/exams`);
+    if (!resp.ok) {
+        applyExamTypeOptions([]);
+        return;
+    }
+    const data = await resp.json();
+    applyExamTypeOptions(data.exams || []);
+}
+
+hydrateCourses();
+setMinDateTime('manual-start');
+
+const courseSelect = document.getElementById('manual-course');
+if (courseSelect) {
+    courseSelect.addEventListener('change', () => {
+        refreshExamTypeOptions(courseSelect.value);
+    });
+}
+
+if (selectedCourseId) {
+    refreshExamTypeOptions(selectedCourseId);
+} else if (courseSelect && courseSelect.value) {
+    refreshExamTypeOptions(courseSelect.value);
+}
+
+const form = document.getElementById('manual-exam-form');
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const courseId = document.getElementById('manual-course').value;
+    const startTime = document.getElementById('manual-start').value || null;
+    if (startTime && !isFutureDateTime(startTime)) {
+        setStatus('Start time must be in the future.', 'error');
+        return;
+    }
+
+    const payload = {
+        title: document.getElementById('manual-title').value,
+        assessment_type: document.getElementById('manual-type').value,
+        difficulty: document.getElementById('manual-difficulty').value,
+        duration_minutes: parseInt(document.getElementById('manual-duration').value) || 60,
+        total_marks: parseInt(document.getElementById('manual-total-marks').value) || 1,
+        passing_marks: parseInt(document.getElementById('manual-pass').value) || 0,
+        start_time: startTime,
+        end_time: document.getElementById('manual-end').value || null,
+        is_proctored: document.getElementById('manual-proctored').checked,
+        questions_text: document.getElementById('manual-questions').value,
+    };
+
+    if (!payload.questions_text.trim()) {
+        setStatus('Paste at least one question before submitting.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('manual-submit');
+    btn.disabled = true; btn.textContent = 'Creating...';
+
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${courseId}/exams/manual`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+
+    btn.disabled = false; btn.textContent = 'Create Draft Exam';
+
+    if (resp.ok) {
+        setStatus('Draft exam created. Redirecting to exams...', 'success');
+        setTimeout(() => { window.location.href = '/lecturer/dashboard?view=exams'; }, 800);
+    } else {
+        const data = await resp.json().catch(() => ({}));
+        setStatus(data.error || 'Failed to create manual exam.', 'error');
+    }
+});
+</script>
+{% endblock %}

@@ -1510,7 +1510,10 @@ async function loadExams() {
     container.innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <h4 class="font-medium text-black">Exams</h4>
-            <button onclick="openExamGenerator(currentCourseId)" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
+            <div class="flex items-center gap-2">
+                <button onclick="openManualExam(currentCourseId)" class="text-sm bg-white text-black px-3 py-1.5 rounded-xl border border-black/10 hover:border-black/20 transition-all">Manual Exam</button>
+                <button onclick="openExamGenerator(currentCourseId)" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
+            </div>
         </div>
         <p class="text-black/30 text-sm">Loading exams...</p>
     `;
@@ -1521,7 +1524,10 @@ async function loadExams() {
     container.innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <h4 class="font-medium text-black">Exams (${exams.length})</h4>
-            <button onclick="openExamGenerator(currentCourseId)" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
+            <div class="flex items-center gap-2">
+                <button onclick="openManualExam(currentCourseId)" class="text-sm bg-white text-black px-3 py-1.5 rounded-xl border border-black/10 hover:border-black/20 transition-all">Manual Exam</button>
+                <button onclick="openExamGenerator(currentCourseId)" class="text-sm bg-black text-white px-3 py-1.5 rounded-xl hover:bg-black/80 transition-all">+ Generate Exam</button>
+            </div>
         </div>
         ${exams.length === 0 ? '<p class="text-black/30 text-sm">No exams yet. Click &quot;Generate Exam&quot; to auto-create from course materials.</p>' : `
         <div class="space-y-3">
@@ -1575,6 +1581,15 @@ async function openExamGenerator(courseId) {
     await loadExamMaterials(currentCourseId);
     setMinDateTime('exam-start');
     document.getElementById('create-exam-modal').classList.remove('hidden');
+}
+
+function openManualExam(courseId) {
+    const selected = courseId || currentCourseId;
+    if (!selected) {
+        showNoticeModal({ title: 'Select a Course', message: 'Select a course first.' });
+        return;
+    }
+    window.location.href = `/lecturer/exams/manual?course_id=${selected}`;
 }
 
 async function loadExamMaterials(courseId) {
@@ -1651,7 +1666,10 @@ async function loadExamsOverview() {
                     <h3 class="text-lg font-semibold text-black">${course.code} — ${course.title}</h3>
                     <p class="text-xs text-black/40 mt-1">${course.category || 'Uncategorized'}</p>
                 </div>
-                <button onclick="openExamGenerator(${course.id})" class="text-sm bg-black hover:bg-black/80 text-white px-3 py-1.5 rounded-xl transition-all">+ Generate Exam</button>
+                <div class="flex items-center gap-2">
+                    <button onclick="openManualExam(${course.id})" class="text-sm bg-white text-black px-3 py-1.5 rounded-xl border border-black/10 hover:border-black/20 transition-all">Manual Exam</button>
+                    <button onclick="openExamGenerator(${course.id})" class="text-sm bg-black hover:bg-black/80 text-white px-3 py-1.5 rounded-xl transition-all">+ Generate Exam</button>
+                </div>
             </div>
             ${exams.length === 0
                 ? '<p class="text-black/30 text-sm">No exams yet. Click "Generate Exam" to auto-create from this course materials.</p>'
@@ -1822,7 +1840,11 @@ async function approveAndPublish() {
     btn.disabled = false; btn.textContent = 'Approve & Publish';
     if (resp.ok) {
         document.getElementById('review-modal').classList.add('hidden');
-        loadExams();
+        if (document.getElementById('course-detail').classList.contains('hidden')) {
+            loadExamsOverview();
+        } else {
+            loadExams();
+        }
     } else {
         const d = await resp.json().catch(() => ({}));
         if (d && d.schedule_expired && d.exam) {
