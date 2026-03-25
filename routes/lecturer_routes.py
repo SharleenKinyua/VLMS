@@ -534,9 +534,50 @@ def publish_exam(exam_id):
     if not course:
         return jsonify({'error': 'Unauthorized'}), 403
 
+    now = datetime.now()
+    if exam.end_time and now > exam.end_time:
+        return jsonify({
+            'error': 'Exam schedule has expired. Please reset the schedule before publishing.',
+            'schedule_expired': True,
+            'exam': exam.to_dict(),
+        }), 400
+
     exam.is_published = True
     db.session.commit()
     return jsonify({'message': 'Exam published', 'exam': exam.to_dict()})
+
+
+@lecturer_bp.route('/api/lecturer/exams/<int:exam_id>/schedule', methods=['PUT'])
+@jwt_required()
+@role_required('lecturer')
+def update_exam_schedule(exam_id):
+    identity = get_identity()
+    exam = Exam.query.get(exam_id)
+    if not exam:
+        return jsonify({'error': 'Exam not found'}), 404
+
+    course = Course.query.filter_by(id=exam.course_id, lecturer_id=identity['id']).first()
+    if not course:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    start_raw = data.get('start_time')
+    if not start_raw:
+        return jsonify({'error': 'Start time is required.'}), 400
+
+    duration = int(data.get('duration_minutes') or exam.duration_minutes or 60)
+    start = datetime.fromisoformat(start_raw)
+    end = datetime.fromisoformat(data['end_time']) if data.get('end_time') else None
+
+    if not end or end <= start:
+        end = start + timedelta(minutes=duration)
+
+    exam.start_time = start
+    exam.end_time = end
+    exam.duration_minutes = duration
+    db.session.commit()
+
+    return jsonify({'message': 'Exam schedule updated', 'exam': exam.to_dict()})
 
 
 @lecturer_bp.route('/api/lecturer/exams/<int:exam_id>/release-grades', methods=['POST'])
@@ -626,16 +667,31 @@ def generate_exam_from_materials(course_id):
     exam_type = map_assessment_type_to_exam_type(assessment_type)
     question_types = data.get('question_types', ['mcq', 'short_answer'])
 
-    # Gather text from all course materials
-    materials = Material.query.filter_by(course_id=course_id).all()
+    # Gather text from selected course materials (or all if none selected)
+    selected_ids = data.get('material_ids') or []
+    if isinstance(selected_ids, list):
+        selected_ids = [int(mid) for mid in selected_ids if str(mid).isdigit()]
+    else:
+        selected_ids = []
+    include_lectures = data.get('include_lectures', True)
+
+    materials_query = Material.query.filter_by(course_id=course_id)
+    if selected_ids:
+        materials_query = materials_query.filter(Material.id.in_(selected_ids))
+    materials = materials_query.all()
+    if selected_ids and not materials:
+        return jsonify({'error': 'Selected materials not found for this course.'}), 400
     if not materials:
         # Also check if at least lectures have content
-        lectures = Lecture.query.filter_by(course_id=course_id).all()
+        lectures = Lecture.query.filter_by(course_id=course_id).all() if include_lectures else []
         has_lecture_content = any(lec.content and len(lec.content.strip()) > 50 for lec in lectures)
         if not has_lecture_content:
-            return jsonify({'error': 'No materials found for this course. Upload materials first.'}), 400
+            msg = 'No materials found for this course. Upload materials first.'
+            if not include_lectures:
+                msg = 'No materials selected and lecture notes excluded.'
+            return jsonify({'error': msg}), 400
     else:
-        lectures = Lecture.query.filter_by(course_id=course_id).all()
+        lectures = Lecture.query.filter_by(course_id=course_id).all() if include_lectures else []
 
     combined_text = ''
 

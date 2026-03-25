@@ -408,6 +408,26 @@
                 </p>
             </div>
 
+            <div class="border border-black/[0.06] rounded-xl p-4 bg-black/[0.01] space-y-3">
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-black/70">Select Materials (Optional)</p>
+                        <p class="text-xs text-black/50">If none selected, all materials will be used.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="selectAllExamMaterials(true)" class="text-xs bg-black/[0.04] text-black/60 px-2.5 py-1 rounded-lg hover:bg-black/[0.08] font-medium">Select All</button>
+                        <button type="button" onclick="selectAllExamMaterials(false)" class="text-xs bg-black/[0.04] text-black/60 px-2.5 py-1 rounded-lg hover:bg-black/[0.08] font-medium">Clear</button>
+                    </div>
+                </div>
+                <div id="exam-materials-list" class="max-h-40 overflow-y-auto space-y-2 text-sm text-black/70">
+                    <div class="text-xs text-black/40">Loading materials...</div>
+                </div>
+                <label class="flex items-center gap-2 text-sm text-black/70">
+                    <input type="checkbox" id="include-lectures" checked class="w-4 h-4 accent-black rounded">
+                    Include lecture notes
+                </label>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="border border-black/[0.06] rounded-xl p-4 bg-black/[0.01]">
                     <label class="block text-sm font-medium text-black/60 mb-2">Question Types</label>
@@ -469,6 +489,45 @@
                     Approve &amp; Publish
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reschedule Exam Modal -->
+<div id="reschedule-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-6 border-b border-black/[0.06] flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-semibold text-black">Reset Exam Schedule</h3>
+                <p class="text-sm text-black/40 mt-1">The scheduled end time has passed. Update the schedule to publish.</p>
+            </div>
+            <button title="Close" onclick="closeRescheduleModal()"
+                    class="w-8 h-8 rounded-lg bg-black/[0.04] hover:bg-black/[0.08] flex items-center justify-center text-black/30 hover:text-black transition-all"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-black/60 mb-1">Start Time</label>
+                  <input type="datetime-local" id="reschedule-start" onchange="autoCalcRescheduleEndTime()"
+                       class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-black/60 mb-1">Duration (min)</label>
+                <input type="number" id="reschedule-duration" value="60" min="5" onchange="autoCalcRescheduleEndTime()"
+                       class="w-full px-4 py-2.5 border border-black/10 rounded-xl focus:ring-1 focus:ring-black/20 outline-none text-black">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-black/60 mb-1">End Time <span class="text-black/30 font-normal">(auto-calculated)</span></label>
+                <input type="datetime-local" id="reschedule-end" readonly
+                       class="w-full px-4 py-2.5 border border-black/10 rounded-xl outline-none text-black/50 bg-black/[0.02] cursor-not-allowed">
+            </div>
+        </div>
+        <div class="p-4 border-t border-black/[0.06] flex justify-end items-center bg-black/[0.02] gap-3">
+            <button onclick="closeRescheduleModal()"
+                    class="px-4 py-2 text-sm text-black/40 hover:text-black font-medium transition-colors">Cancel</button>
+            <button onclick="submitRescheduleAndPublish()" id="reschedule-approve-btn"
+                    class="px-6 py-2 text-sm bg-black hover:bg-black/80 text-white font-semibold rounded-xl transition-all">
+                Update &amp; Publish
+            </button>
         </div>
     </div>
 </div>
@@ -1363,6 +1422,7 @@ async function togglePublish(courseId, publish) {
 }
 
 let reviewExamId = null;
+let rescheduleExamId = null;
 
 const ASSESSMENT_TOTALS = {
     cat1: 30,
@@ -1512,7 +1572,39 @@ async function openExamGenerator(courseId) {
         return;
     }
     await refreshExamTypeOptions(currentCourseId);
+    await loadExamMaterials(currentCourseId);
+    setMinDateTime('exam-start');
     document.getElementById('create-exam-modal').classList.remove('hidden');
+}
+
+async function loadExamMaterials(courseId) {
+    const container = document.getElementById('exam-materials-list');
+    if (!container) return;
+    container.innerHTML = '<div class="text-xs text-black/40">Loading materials...</div>';
+
+    const resp = await AUTH.fetch(`/api/lecturer/courses/${courseId}/materials`);
+    if (!resp.ok) {
+        container.innerHTML = '<div class="text-xs text-red-500">Failed to load materials.</div>';
+        return;
+    }
+
+    const data = await resp.json();
+    const materials = data.materials || [];
+    if (materials.length === 0) {
+        container.innerHTML = '<div class="text-xs text-black/40">No materials uploaded yet.</div>';
+        return;
+    }
+
+    container.innerHTML = materials.map(m => `
+        <label class="flex items-center gap-2 text-sm text-black/70">
+            <input type="checkbox" class="exam-material-cb w-4 h-4 accent-black rounded" value="${m.id}">
+            <span>${m.title || m.file_path}</span>
+        </label>
+    `).join('');
+}
+
+function selectAllExamMaterials(checked) {
+    document.querySelectorAll('.exam-material-cb').forEach(cb => { cb.checked = checked; });
 }
 
 async function loadExamsOverview() {
@@ -1538,9 +1630,20 @@ async function loadExamsOverview() {
         return resp.json();
     }));
 
-    grid.className = 'space-y-6';
-    grid.innerHTML = courses.map((course, index) => {
+    const courseRows = courses.map((course, index) => {
         const exams = examData[index]?.exams || [];
+        const catCount = exams.filter(exam => {
+            const type = getAssessmentTypeFromExam(exam);
+            return type === 'cat1' || type === 'cat2';
+        }).length;
+        return { course, exams, catCount };
+    }).sort((a, b) => {
+        if (a.catCount !== b.catCount) return a.catCount - b.catCount;
+        return (a.course.title || '').localeCompare(b.course.title || '');
+    });
+
+    grid.className = 'space-y-6';
+    grid.innerHTML = courseRows.map(({ course, exams }) => {
         return `
         <div class="bg-white rounded-2xl border border-black/[0.06] p-6">
             <div class="flex items-center justify-between mb-4">
@@ -1697,7 +1800,24 @@ async function deleteQuestion(qId) {
 async function approveAndPublish() {
     if (!reviewExamId) return;
     const btn = document.getElementById('approve-btn');
-    btn.disabled = true; btn.textContent = 'Publishing...';
+    btn.disabled = true; btn.textContent = 'Checking schedule...';
+
+    let exam = null;
+    if (currentCourseId) {
+        const examsResp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/exams`);
+        if (examsResp.ok) {
+            const examsData = await examsResp.json();
+            exam = (examsData.exams || []).find(e => e.id === reviewExamId) || null;
+        }
+    }
+
+    if (exam && exam.end_time && new Date() > new Date(exam.end_time)) {
+        btn.disabled = false; btn.textContent = 'Approve & Publish';
+        openRescheduleModal(exam);
+        return;
+    }
+
+    btn.textContent = 'Publishing...';
     const resp = await AUTH.fetch(`/api/lecturer/exams/${reviewExamId}/publish`, { method: 'POST' });
     btn.disabled = false; btn.textContent = 'Approve & Publish';
     if (resp.ok) {
@@ -1705,6 +1825,10 @@ async function approveAndPublish() {
         loadExams();
     } else {
         const d = await resp.json().catch(() => ({}));
+        if (d && d.schedule_expired && d.exam) {
+            openRescheduleModal(d.exam);
+            return;
+        }
         showNoticeModal({ title: 'Publish Failed', message: d.error || 'Failed to publish exam.' });
     }
 }
@@ -1835,6 +1959,100 @@ function autoCalcEndTime() {
     }
 }
 
+function toLocalInputValue(date) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function setMinDateTime(inputId, minutesFromNow = 1) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const minDate = new Date(Date.now() + minutesFromNow * 60000);
+    input.min = toLocalInputValue(minDate);
+}
+
+function isFutureDateTime(value) {
+    if (!value) return true;
+    const selected = new Date(value).getTime();
+    return selected >= Date.now();
+}
+
+function openRescheduleModal(exam) {
+    rescheduleExamId = exam.id;
+    const durationEl = document.getElementById('reschedule-duration');
+    const startEl = document.getElementById('reschedule-start');
+    const endEl = document.getElementById('reschedule-end');
+
+    const now = new Date();
+    const startDate = exam.start_time ? new Date(exam.start_time) : new Date(now.getTime() + 30 * 60000);
+    const duration = parseInt(exam.duration_minutes) || 60;
+
+    durationEl.value = duration;
+    startEl.value = toLocalInputValue(startDate);
+    endEl.value = '';
+    setMinDateTime('reschedule-start');
+    autoCalcRescheduleEndTime();
+
+    document.getElementById('reschedule-modal').classList.remove('hidden');
+}
+
+function closeRescheduleModal() {
+    document.getElementById('reschedule-modal').classList.add('hidden');
+}
+
+function autoCalcRescheduleEndTime() {
+    const start = document.getElementById('reschedule-start').value;
+    const duration = parseInt(document.getElementById('reschedule-duration').value) || 60;
+    if (start) {
+        const endDate = new Date(new Date(start).getTime() + duration * 60000);
+        document.getElementById('reschedule-end').value = toLocalInputValue(endDate);
+    }
+}
+
+async function submitRescheduleAndPublish() {
+    if (!rescheduleExamId) return;
+    const start = document.getElementById('reschedule-start').value;
+    const duration = parseInt(document.getElementById('reschedule-duration').value) || 60;
+    const end = document.getElementById('reschedule-end').value || null;
+
+    if (!start) {
+        showNoticeModal({ title: 'Missing Start Time', message: 'Select a start time to update the schedule.' });
+        return;
+    }
+
+    if (!isFutureDateTime(start)) {
+        showNoticeModal({ title: 'Invalid Start Time', message: 'Start time must be in the future.' });
+        return;
+    }
+
+    const btn = document.getElementById('reschedule-approve-btn');
+    btn.disabled = true; btn.textContent = 'Updating...';
+
+    const scheduleResp = await AUTH.fetch(`/api/lecturer/exams/${rescheduleExamId}/schedule`, {
+        method: 'PUT',
+        body: JSON.stringify({ start_time: start, end_time: end, duration_minutes: duration }),
+    });
+
+    if (!scheduleResp.ok) {
+        const d = await scheduleResp.json().catch(() => ({}));
+        btn.disabled = false; btn.textContent = 'Update & Publish';
+        showNoticeModal({ title: 'Schedule Update Failed', message: d.error || 'Failed to update schedule.' });
+        return;
+    }
+
+    const publishResp = await AUTH.fetch(`/api/lecturer/exams/${rescheduleExamId}/publish`, { method: 'POST' });
+    btn.disabled = false; btn.textContent = 'Update & Publish';
+
+    if (publishResp.ok) {
+        closeRescheduleModal();
+        document.getElementById('review-modal').classList.add('hidden');
+        loadExams();
+    } else {
+        const d = await publishResp.json().catch(() => ({}));
+        showNoticeModal({ title: 'Publish Failed', message: d.error || 'Failed to publish exam.' });
+    }
+}
+
 document.getElementById('exam-type').addEventListener('change', applyExamTypeDefaults);
 applyExamTypeDefaults();
 
@@ -1845,6 +2063,13 @@ document.getElementById('create-exam-form').addEventListener('submit', async (e)
         showNoticeModal({ title: 'Missing Selection', message: 'Select at least one question type.' });
         return;
     }
+    const startTime = document.getElementById('exam-start').value;
+    if (startTime && !isFutureDateTime(startTime)) {
+        showNoticeModal({ title: 'Invalid Start Time', message: 'Start time must be in the future.' });
+        return;
+    }
+    const materialIds = [...document.querySelectorAll('.exam-material-cb:checked')].map(cb => parseInt(cb.value));
+    const includeLectures = document.getElementById('include-lectures')?.checked !== false;
     const btn = document.getElementById('generate-btn');
     btn.disabled = true; btn.textContent = 'Generating questions...';
     const resp = await AUTH.fetch(`/api/lecturer/courses/${currentCourseId}/exams/generate`, {
@@ -1862,6 +2087,8 @@ document.getElementById('create-exam-form').addEventListener('submit', async (e)
             start_time: document.getElementById('exam-start').value || null,
             end_time: document.getElementById('exam-end').value || null,
             is_proctored: document.getElementById('exam-proctored').checked,
+            material_ids: materialIds,
+            include_lectures: includeLectures,
         }),
     });
     btn.disabled = false; btn.textContent = 'Generate Exam from Materials';
