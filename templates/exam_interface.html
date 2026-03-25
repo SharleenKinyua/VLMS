@@ -125,6 +125,7 @@
             <div id="face-verify-screen" class="glass-card rounded-2xl p-8 text-center fade-up">
                 <h2 class="text-2xl font-semibold mb-3">Face Verification Required</h2>
                 <p class="text-slate-300 mb-6">Please allow camera access and look directly at the camera.</p>
+                <p class="text-xs text-slate-400 mb-4">Proctoring may capture short evidence clips when violations are detected.</p>
                 <video id="verify-video" autoplay class="mx-auto rounded-xl mb-4 w-80 h-60 bg-black border border-slate-700"></video>
                 <button onclick="verifyFace()" id="verify-btn"
                         class="bg-white text-black hover:bg-neutral-200 px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-[1.02]">
@@ -216,6 +217,8 @@ let stream = null;
 let warnedFiveMinutes = false;
 let warnedTwoMinutes = false;
 let examNoticeTimeout = null;
+let proctorRecordingEnabled = false;
+let violationRecordingInProgress = false;
 
 // ─── Initialize Camera ───
 async function initCamera() {
@@ -271,6 +274,7 @@ async function verifyFace() {
         document.getElementById('face-verify-screen').classList.add('hidden');
         document.getElementById('questions-container').classList.remove('hidden');
         document.getElementById('exam-title').textContent = startData.exam.title;
+        proctorRecordingEnabled = Boolean(startData.exam?.is_proctored);
         renderQuestions();
         startTimer(startData.remaining_seconds ?? (startData.exam.duration_minutes * 60));
         startProctoring();
@@ -474,9 +478,15 @@ function startProctoring() {
             if (data.violations && data.violations.length > 0) {
                 const alertDiv = document.getElementById('violation-alert');
                 const msgEl = document.getElementById('violation-msg');
+                const violationLabels = data.violations.map(v => v.type || v).filter(Boolean);
                 alertDiv.classList.remove('hidden');
-                msgEl.textContent = `Detected: ${data.violations.join(', ')}`;
+                msgEl.textContent = `Detected: ${violationLabels.join(', ')}`;
                 setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+
+                const firstViolationId = data.violations[0]?.id || null;
+                if (firstViolationId) {
+                    recordViolationClip(firstViolationId);
+                }
             }
 
             if (data.is_flagged) {
@@ -484,6 +494,53 @@ function startProctoring() {
             }
         }
     }, 10000); // Every 10 seconds
+}
+
+async function recordViolationClip(violationId) {
+    if (!proctorRecordingEnabled || !stream || violationRecordingInProgress) return;
+    violationRecordingInProgress = true;
+
+    const chunks = [];
+    let recorder = null;
+    try {
+        recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 350000 });
+    } catch (_) {
+        try {
+            recorder = new MediaRecorder(stream);
+        } catch (err) {
+            violationRecordingInProgress = false;
+            return;
+        }
+    }
+
+    recorder.ondataavailable = (evt) => {
+        if (evt.data && evt.data.size > 0) chunks.push(evt.data);
+    };
+
+    recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+        violationRecordingInProgress = false;
+        if (blob.size === 0) return;
+        await uploadViolationClip(violationId, blob);
+    };
+
+    recorder.start();
+    setTimeout(() => {
+        if (recorder.state === 'recording') recorder.stop();
+    }, 8000);
+}
+
+async function uploadViolationClip(violationId, blob) {
+    const formData = new FormData();
+    formData.append('clip', blob, `violation_${violationId}.webm`);
+    formData.append('duration', '8');
+    try {
+        await fetch(`/api/exam/violations/${violationId}/clip`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${AUTH.getToken()}` },
+            body: formData,
+        });
+    } catch (_) {}
 }
 
 // ─── Tab Switch Detection ───

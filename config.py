@@ -30,6 +30,7 @@ class Config:
     # Proctoring
     PROCTORING_RISK_THRESHOLD = 100
     SCREENSHOT_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'screenshots')
+    RECORDING_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'recordings')
 
     # AI Model paths
     AI_MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ai_models')

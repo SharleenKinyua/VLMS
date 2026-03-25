@@ -45,6 +45,27 @@ if 'total_pages' not in lp_cols:
 else:
     print("learning_progress.total_pages already exists")
 
+cursor.execute("SHOW COLUMNS FROM violations")
+violation_cols = [r[0] for r in cursor.fetchall()]
+
+if 'video_path' not in violation_cols:
+    cursor.execute("ALTER TABLE violations ADD COLUMN video_path VARCHAR(500) NULL")
+    print("Added violations.video_path column")
+else:
+    print("violations.video_path already exists")
+
+if 'video_format' not in violation_cols:
+    cursor.execute("ALTER TABLE violations ADD COLUMN video_format VARCHAR(50) NULL")
+    print("Added violations.video_format column")
+else:
+    print("violations.video_format already exists")
+
+if 'video_duration' not in violation_cols:
+    cursor.execute("ALTER TABLE violations ADD COLUMN video_duration FLOAT NULL")
+    print("Added violations.video_duration column")
+else:
+    print("violations.video_duration already exists")
+
 conn.commit()
 cursor.close()
 conn.close()

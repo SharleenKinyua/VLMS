@@ -14,6 +14,7 @@ def create_app(config_name='development'):
     # Ensure required directories exist
     os.makedirs(app.config.get('UPLOAD_FOLDER', 'uploads'), exist_ok=True)
     os.makedirs(app.config.get('SCREENSHOT_FOLDER', 'screenshots'), exist_ok=True)
+    os.makedirs(app.config.get('RECORDING_FOLDER', 'recordings'), exist_ok=True)
 
     # Initialize extensions
     db.init_app(app)
@@ -49,6 +50,11 @@ def create_app(config_name='development'):
     @app.route('/screenshots/<path:filename>')
     def screenshot_file(filename):
         return send_from_directory(app.config['SCREENSHOT_FOLDER'], filename)
+
+    # Serve proctoring recordings
+    @app.route('/recordings/<path:filename>')
+    def recording_file(filename):
+        return send_from_directory(app.config['RECORDING_FOLDER'], filename)
 
     # Initialize database
     from database.db_init import init_database

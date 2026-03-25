@@ -347,6 +347,9 @@ class Violation(db.Model):
     severity = db.Column(db.Integer, default=5)  # Risk points added
     description = db.Column(db.Text, nullable=True)
     screenshot_path = db.Column(db.String(500), nullable=True)
+    video_path = db.Column(db.String(500), nullable=True)
+    video_format = db.Column(db.String(50), nullable=True)
+    video_duration = db.Column(db.Float, nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -357,6 +360,9 @@ class Violation(db.Model):
             'severity': self.severity,
             'description': self.description,
             'screenshot_path': self.screenshot_path,
+            'video_path': self.video_path,
+            'video_format': self.video_format,
+            'video_duration': self.video_duration,
             'timestamp': self.timestamp.isoformat() if self.timestamp else None,
         }
 

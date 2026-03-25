@@ -83,6 +83,7 @@ def process_proctor_frame(submission_id):
         pass
 
     # Record violations
+    created_violations = []
     for v in violations:
         severity = v.get('severity', 5)
         violation = Violation(
@@ -107,6 +108,7 @@ def process_proctor_frame(submission_id):
 
         db.session.add(violation)
         submission.risk_score += severity
+        created_violations.append({'id': violation, 'type': v.get('type'), 'severity': severity})
 
     # Check threshold
     exam = Exam.query.get(submission.exam_id)
@@ -115,11 +117,48 @@ def process_proctor_frame(submission_id):
 
     db.session.commit()
 
+    violations_payload = [
+        {'id': item['id'].id, 'type': item['type'], 'severity': item['severity']}
+        for item in created_violations
+    ]
+
     return jsonify({
         'risk_score': submission.risk_score,
         'is_flagged': submission.is_flagged,
-        'violations': [v.get('type') for v in violations],
+        'violations': violations_payload,
     })
+
+
+@exam_bp.route('/api/exam/violations/<int:violation_id>/clip', methods=['POST'])
+@jwt_required()
+@role_required('student')
+def upload_violation_clip(violation_id):
+    identity = get_identity()
+    violation = Violation.query.get(violation_id)
+    if not violation:
+        return jsonify({'error': 'Violation not found'}), 404
+
+    submission = Submission.query.get(violation.submission_id)
+    if not submission or submission.student_id != identity['id']:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    clip = request.files.get('clip')
+    if not clip:
+        return jsonify({'error': 'No clip uploaded'}), 400
+
+    recording_dir = current_app.config.get('RECORDING_FOLDER', 'recordings')
+    os.makedirs(recording_dir, exist_ok=True)
+    ext = os.path.splitext(clip.filename or '')[1].lower() or '.webm'
+    filename = f"clip_{violation_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}{ext}"
+    filepath = os.path.join(recording_dir, filename)
+    clip.save(filepath)
+
+    violation.video_path = filename
+    violation.video_format = (clip.mimetype or 'video/webm')
+    violation.video_duration = request.form.get('duration', type=float)
+    db.session.commit()
+
+    return jsonify({'message': 'Clip uploaded', 'video_path': filename})
 
 
 @exam_bp.route('/api/exam/<int:submission_id>/tab-switch', methods=['POST'])
