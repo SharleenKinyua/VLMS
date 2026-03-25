@@ -26,12 +26,14 @@ def create_app(config_name='development'):
     from routes.lecturer_routes import lecturer_bp
     from routes.exam_routes import exam_bp
     from routes.analytics_routes import analytics_bp
+    from routes.admin_routes import admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(student_bp)
     app.register_blueprint(lecturer_bp)
     app.register_blueprint(exam_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(admin_bp)
 
     # Root route
     @app.route('/')

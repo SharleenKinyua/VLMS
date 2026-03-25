@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindStack Admin Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #0a0a0a;
+            --stone: #f4f4f2;
+            --ash: #dfdfda;
+            --graphite: #1b1b1b;
+            --fog: rgba(10, 10, 10, 0.08);
+            --line: rgba(10, 10, 10, 0.12);
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background:
+                radial-gradient(circle at 12% 20%, rgba(10, 10, 10, 0.06), transparent 45%),
+                radial-gradient(circle at 90% 10%, rgba(10, 10, 10, 0.05), transparent 55%),
+                linear-gradient(180deg, #ffffff 0%, #f6f6f2 60%, #ededed 100%);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        .logo-text {
+            font-family: 'Unbounded', sans-serif;
+        }
+
+        .admin-shell {
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid var(--line);
+            box-shadow: 0 30px 80px rgba(10, 10, 10, 0.08);
+        }
+
+        .nav-pill.active {
+            background: var(--ink);
+            color: white !important;
+            box-shadow: 0 12px 22px rgba(10, 10, 10, 0.18);
+        }
+
+        .dashboard-card {
+            background: linear-gradient(140deg, rgba(10, 10, 10, 0.96), rgba(26, 26, 26, 0.92));
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .ghost-card {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid var(--line);
+            box-shadow: 0 20px 50px rgba(10, 10, 10, 0.08);
+        }
+
+        .stat-chip {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .grid-line {
+            border-top: 1px dashed rgba(10, 10, 10, 0.16);
+        }
+
+        .callout {
+            background: #ffffff;
+            border: 1px solid var(--line);
+        }
+
+        .badge {
+            background: rgba(10, 10, 10, 0.08);
+        }
+
+        .shadow-sheen {
+            box-shadow: 0 16px 40px rgba(10, 10, 10, 0.12);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease forwards;
+            opacity: 0;
+        }
+
+        .slide-up {
+            animation: slideUp 0.8s ease forwards;
+            opacity: 0;
+        }
+
+        .glow {
+            box-shadow: 0 20px 40px rgba(10, 10, 10, 0.12), 0 0 0 1px rgba(10, 10, 10, 0.08);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulseSoft {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse-soft {
+            animation: pulseSoft 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    {% include 'partials/admin_header.html' %}
+
+    <main class="px-4 sm:px-6 lg:px-10 py-10">
+        <section class="max-w-7xl mx-auto admin-shell rounded-[32px] px-6 sm:px-10 py-10 slide-up">
+            <div class="grid lg:grid-cols-[1.2fr_0.8fr] gap-8">
+                <div class="space-y-6">
+                    <div>
+                        <span class="uppercase text-xs tracking-[0.4em] text-black/40">System Pulse</span>
+                        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">MindStack Command Center</h2>
+                        <p class="text-black/60 mt-3 max-w-2xl">
+                            A high-contrast console that blends white-space clarity with deep black focus. Keep the platform stable,
+                            spotlight risk, and move fast on the data that matters.
+                        </p>
+                    </div>
+
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <div class="dashboard-card rounded-2xl p-5 shadow-sheen">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-white/60">Active Students</p>
+                                    <p class="text-3xl font-semibold mt-2" id="stat-students">0</p>
+                                </div>
+                                <div class="stat-chip px-3 py-2 rounded-xl text-xs text-white/70">Live</div>
+                            </div>
+                            <p class="text-xs text-white/50 mt-4">Total enrolled across all courses</p>
+                        </div>
+                        <div class="dashboard-card rounded-2xl p-5 shadow-sheen">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-white/60">Lecturers</p>
+                                    <p class="text-3xl font-semibold mt-2" id="stat-lecturers">0</p>
+                                </div>
+                                <div class="stat-chip px-3 py-2 rounded-xl text-xs text-white/70">Verified</div>
+                            </div>
+                            <p class="text-xs text-white/50 mt-4">Teaching accounts onboarded</p>
+                        </div>
+                        <div class="ghost-card rounded-2xl p-5">
+                            <p class="text-xs uppercase tracking-[0.3em] text-black/40">Upcoming Exams</p>
+                            <p class="text-2xl font-semibold mt-3" id="stat-exams">0</p>
+                            <p class="text-sm text-black/50 mt-2">Scheduled this month</p>
+                        </div>
+                        <div class="ghost-card rounded-2xl p-5">
+                            <p class="text-xs uppercase tracking-[0.3em] text-black/40">Courses</p>
+                            <p class="text-2xl font-semibold mt-3" id="stat-courses">0</p>
+                            <p class="text-sm text-black/50 mt-2">Active units in catalog</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-5">
+                    <div class="ghost-card rounded-3xl p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs uppercase tracking-[0.3em] text-black/40">Risk Lens</p>
+                                <h3 class="text-xl font-semibold mt-2">Exam Integrity</h3>
+                            </div>
+                            <span class="badge text-xs px-3 py-1 rounded-full text-black/60">Monitoring</span>
+                        </div>
+                        <div class="mt-5 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-black/60">Active sessions</span>
+                                <span class="font-semibold" id="stat-active-exams">0</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-black/60">Flags today</span>
+                                <span class="font-semibold" id="stat-flags">0</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-black/60">Avg. risk score</span>
+                                <span class="font-semibold" id="stat-risk-score">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="callout rounded-3xl p-6 border border-black/10">
+                        <h4 class="text-lg font-semibold">AI Operations</h4>
+                        <p class="text-sm text-black/60 mt-2">Keep the model layer responsive and fast for lecturers and students.</p>
+                        <div class="grid grid-cols-2 gap-3 mt-4">
+                            <div class="bg-black text-white rounded-2xl p-4">
+                                <p class="text-xs uppercase tracking-[0.3em] text-white/60">Ollama</p>
+                                <p class="text-lg font-semibold mt-2" id="stat-ollama">Online</p>
+                            </div>
+                            <div class="bg-white rounded-2xl p-4 border border-black/10">
+                                <p class="text-xs uppercase tracking-[0.3em] text-black/40">Avg. response</p>
+                                <p class="text-lg font-semibold mt-2" id="stat-response">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-10 grid lg:grid-cols-[1.2fr_0.8fr] gap-8">
+                <div class="ghost-card rounded-3xl p-6">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xl font-semibold">Priority Actions</h3>
+                        <span class="text-xs text-black/40">Next 24 hours</span>
+                    </div>
+                    <div class="mt-6 space-y-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center">1</div>
+                            <div>
+                                <p class="font-semibold">Review flagged exam sessions</p>
+                                <p class="text-sm text-black/50">Audit high-risk attempts and follow up.</p>
+                            </div>
+                        </div>
+                        <div class="grid-line"></div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-black/90 text-white flex items-center justify-center">2</div>
+                            <div>
+                                <p class="font-semibold">Check AI model latency</p>
+                                <p class="text-sm text-black/50">Ensure summaries stay under 15 seconds.</p>
+                            </div>
+                        </div>
+                        <div class="grid-line"></div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-black/90 text-white flex items-center justify-center">3</div>
+                            <div>
+                                <p class="font-semibold">Confirm upcoming exam roster</p>
+                                <p class="text-sm text-black/50">Verify course data is synced and ready.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ghost-card rounded-3xl p-6">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xl font-semibold">System Health</h3>
+                        <span class="text-xs text-black/40">Realtime</span>
+                    </div>
+                    <div class="mt-6 space-y-5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-black/60">Database</span>
+                            <span class="text-sm font-semibold" id="stat-db">Stable</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-black/60">Storage</span>
+                            <span class="text-sm font-semibold" id="stat-storage">--</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-black/60">Last backup</span>
+                            <span class="text-sm font-semibold" id="stat-backup">--</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-black/60">Queue length</span>
+                            <span class="text-sm font-semibold" id="stat-queue">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="fixed -z-10 inset-0 pointer-events-none">
+        <div class="absolute top-0 right-0 w-80 h-80 bg-black/5 rounded-full blur-[90px]"></div>
+        <div class="absolute bottom-0 left-0 w-96 h-96 bg-black/10 rounded-full blur-[120px]"></div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+
+        function toggleDropdown(targetId) {
+            const dropdown = document.getElementById(`dropdown-${targetId}`);
+            const wrapper = document.getElementById(`${targetId}-dropdown-wrap`);
+            if (!dropdown) return;
+            dropdown.classList.toggle('hidden');
+            if (wrapper) {
+                const chevron = wrapper.querySelector('.dropdown-chevron');
+                if (chevron) {
+                    chevron.classList.toggle('rotate-180');
+                }
+            }
+        }
+
+        async function fetchAdminOverview() {
+            try {
+                const response = await fetch('/api/analytics/admin/overview', {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch admin overview');
+                }
+
+                const data = await response.json();
+
+                document.getElementById('stat-students').textContent = data.total_students ?? 0;
+                document.getElementById('stat-lecturers').textContent = data.total_lecturers ?? 0;
+                document.getElementById('stat-courses').textContent = data.total_courses ?? 0;
+                document.getElementById('stat-exams').textContent = data.total_exams ?? 0;
+                document.getElementById('stat-active-exams').textContent = data.active_exams ?? 0;
+                document.getElementById('stat-flags').textContent = data.flags_today ?? 0;
+                document.getElementById('stat-risk-score').textContent = `${data.avg_risk_score ?? 0}%`;
+                document.getElementById('stat-response').textContent = data.avg_ai_response ?? '--';
+                document.getElementById('stat-storage').textContent = data.storage_usage ?? '--';
+                document.getElementById('stat-backup').textContent = data.last_backup ?? '--';
+                document.getElementById('stat-queue').textContent = data.queue_length ?? 0;
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function fetchProfile() {
+            if (!token) return;
+            try {
+                const response = await fetch('/api/auth/profile', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!response.ok) return;
+                const data = await response.json();
+                const name = data.full_name || data.username || 'Admin';
+                const email = data.email || '';
+                const initials = name.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
+
+                document.getElementById('user-name').textContent = name;
+                document.getElementById('user-avatar').textContent = initials || 'AD';
+                document.getElementById('dropdown-name').textContent = name;
+                document.getElementById('dropdown-email').textContent = email;
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            const dropdown = document.getElementById('dropdown-user');
+            const wrapper = document.getElementById('user-dropdown-wrap');
+            if (!dropdown || !wrapper) return;
+            if (!wrapper.contains(event.target)) {
+                dropdown.classList.add('hidden');
+                const chevron = wrapper.querySelector('.dropdown-chevron');
+                if (chevron) {
+                    chevron.classList.remove('rotate-180');
+                }
+            }
+        });
+
+        fetchProfile();
+        fetchAdminOverview();
+    </script>
+</body>
+</html>

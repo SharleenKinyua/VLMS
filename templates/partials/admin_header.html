@@ -1,0 +1,64 @@
+{% set active_page = admin_active_page|default('overview') %}
+<nav id="main-nav" class="admin-nav sticky top-0 z-40 transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+            <div class="flex items-center space-x-8">
+                <a href="/admin/dashboard?view=overview" class="flex items-center space-x-2.5 group">
+                    <div class="w-9 h-9 rounded-xl bg-black/90 flex items-center justify-center shadow-lg shadow-black/20 group-hover:shadow-black/30 transition-all duration-300 group-hover:scale-105">
+                        <svg class="w-[18px] h-[18px] text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4.09 12.36a1 1 0 00.78 1.64H11l-1 8 8.91-10.36a1 1 0 00-.78-1.64H13l1-8z"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="logo-text text-xl font-extrabold tracking-tight">MindStack</h1>
+                        <span class="text-[10px] font-semibold uppercase tracking-widest text-black/40 leading-none">Admin Console</span>
+                    </div>
+                </a>
+
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="/admin/dashboard?view=overview" id="nav-overview"
+                       class="nav-link nav-pill px-4 py-2 text-sm font-semibold rounded-xl {{ 'active text-black' if active_page == 'overview' else 'text-black/50 hover:text-black' }}">
+                        Overview
+                    </a>
+                    <a href="/admin/dashboard?view=users" id="nav-users"
+                       class="nav-link nav-pill px-4 py-2 text-sm font-semibold rounded-xl {{ 'active text-black' if active_page == 'users' else 'text-black/50 hover:text-black' }}">
+                        Users
+                    </a>
+                    <a href="/admin/dashboard?view=courses" id="nav-courses"
+                       class="nav-link nav-pill px-4 py-2 text-sm font-semibold rounded-xl {{ 'active text-black' if active_page == 'courses' else 'text-black/50 hover:text-black' }}">
+                        Courses
+                    </a>
+                    <a href="/admin/dashboard?view=exams" id="nav-exams"
+                       class="nav-link nav-pill px-4 py-2 text-sm font-semibold rounded-xl {{ 'active text-black' if active_page == 'exams' else 'text-black/50 hover:text-black' }}">
+                        Exams
+                    </a>
+                    <a href="/admin/dashboard?view=system" id="nav-system"
+                       class="nav-link nav-pill px-4 py-2 text-sm font-semibold rounded-xl {{ 'active text-black' if active_page == 'system' else 'text-black/50 hover:text-black' }}">
+                        System
+                    </a>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <span id="user-name" class="text-sm font-medium text-black/60 hidden sm:inline"></span>
+                <div class="relative" id="user-dropdown-wrap">
+                    <button onclick="toggleDropdown('user')" class="avatar-ring flex items-center gap-2 p-1 rounded-full hover:bg-black/[0.04] transition-all duration-200">
+                        <div class="w-9 h-9 rounded-full bg-black text-white flex items-center justify-center text-sm font-bold shadow-lg shadow-black/20" id="user-avatar">?</div>
+                        <svg class="w-3.5 h-3.5 text-black/40 hidden sm:block transition-transform duration-200 dropdown-chevron" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div id="dropdown-user" class="dropdown-panel hidden absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/10 border border-black/[0.06] py-2 z-50">
+                        <div class="px-4 py-3 border-b border-black/[0.06]">
+                            <p class="text-sm font-semibold text-black" id="dropdown-name"></p>
+                            <p class="text-xs text-black/40 mt-0.5" id="dropdown-email"></p>
+                        </div>
+                        <a href="/analytics" class="w-full flex items-center gap-3 text-left px-4 py-2.5 text-sm text-black/60 hover:text-black hover:bg-black/[0.03] transition-colors duration-150">
+                            Analytics
+                        </a>
+                        <div class="my-1 border-t border-black/5"></div>
+                        <button onclick="logout()" class="w-full flex items-center gap-3 text-left px-4 py-2.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors duration-150">
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
